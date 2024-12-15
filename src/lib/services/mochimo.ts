@@ -1,4 +1,4 @@
-import browser from 'webextension-polyfill'
+
 import type { NetworkNode, BlockchainInfo, Balance, ApiResponse } from '../../../server/types'
 
 const API_URL = 'http://localhost:9000/api'
