@@ -1,28 +1,18 @@
 import { Button } from "@/components/ui/button"
 import { WalletLayout } from "@/components/layout/wallet-layout"
 import { PlusCircle, Import } from "lucide-react"
-import { useEffect, useState } from "react"
-import { MochimoService } from "./lib/services/mochimo"
-import type { BlockchainInfo } from "../server/types"
+import { useEffect } from "react"
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchChainInfo } from './lib/store/slices/blockchainSlice'
+import type { RootState } from './lib/store'
 
 function App() {
-  const [chainInfo, setChainInfo] = useState<BlockchainInfo | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const dispatch = useDispatch()
+  const { info: chainInfo, loading, error } = useSelector((state: RootState) => state.blockchain)
 
   useEffect(() => {
-    const fetchChainInfo = async () => {
-      try {
-        const info = await MochimoService.getChain()
-        setChainInfo(info)
-        console.log(info)
-      } catch (error) {
-        console.error('Error fetching chain info:', error)
-        setError('Failed to fetch blockchain information')
-      }
-    }
-
-    fetchChainInfo()
-  }, [])
+    dispatch(fetchChainInfo())
+  }, [dispatch])
 
   return (
     <WalletLayout>
@@ -33,12 +23,15 @@ function App() {
           <div className="text-red-500 mb-4">{error}</div>
         )}
 
+        {loading && (
+          <div className="mb-4">Loading blockchain info...</div>
+        )}
+
         {chainInfo && (
           <div className="mb-8 text-center">
             <h3 className="font-semibold mb-2">Blockchain Info</h3>
             <div className="text-sm">
               <p>Block: {chainInfo.block.height}</p>
-
             </div>
           </div>
         )}
