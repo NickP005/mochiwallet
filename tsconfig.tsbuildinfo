@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/manifest.ts","./src/vite-env.d.ts","./src/background/index.ts","./src/components/layout/wallet-layout.tsx","./src/components/ui/button.tsx","./src/lib/utils.ts","./src/lib/store/wallet-store.tsx"],"version":"5.6.3"}
