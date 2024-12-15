@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      buffer: 'buffer',
+      process: 'process/browser',
     },
   },
   build: {
@@ -26,6 +28,21 @@ export default defineConfig({
     },
     emptyOutDir: true,
     outDir: 'dist',
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    }
+  },
+  define: {
+    'process.env': {},
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    },
+    include: ['buffer', 'process/browser', 'crypto-browserify', 'stream-browserify']
   },
   publicDir: 'public',
 })

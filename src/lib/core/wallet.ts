@@ -24,20 +24,27 @@ export interface MasterWallet {
   mnemonic: string
   masterSeed: Uint8Array
   accounts: { [index: number]: WalletAccount }
+  password?: string  // Add password to the interface
 }
 
 export class WalletCore {
   /**
    * Creates a new master wallet
    */
-  static createMasterWallet(passphrase: string = ''): MasterWallet {
-    const mnemonic = Mnemonic.generate()
+  static createMasterWallet(passphrase: string = '', existingMnemonic?: string): MasterWallet {
+    const mnemonic = existingMnemonic || Mnemonic.generate()
     const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
+
+    // Ensure masterSeed is Uint8Array
+    const masterSeedArray = masterSeed instanceof Uint8Array 
+      ? masterSeed 
+      : new Uint8Array(Object.values(masterSeed))
 
     return {
       mnemonic,
-      masterSeed,
-      accounts: {}
+      masterSeed: masterSeedArray,
+      accounts: {},
+      password: passphrase  // Store password in wallet
     }
   }
 
@@ -50,10 +57,17 @@ export class WalletCore {
     }
 
     const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
+    
+    // Ensure masterSeed is Uint8Array
+    const masterSeedArray = masterSeed instanceof Uint8Array 
+      ? masterSeed 
+      : new Uint8Array(Object.values(masterSeed))
+
     return {
       mnemonic,
-      masterSeed,
-      accounts: {}
+      masterSeed: masterSeedArray,
+      accounts: {},
+      password: passphrase  // Store password in wallet
     }
   }
 
@@ -88,9 +102,14 @@ export class WalletCore {
       throw new Error(`Account ${accountIndex} already exists`)
     }
 
+    // Ensure masterSeed is Uint8Array
+    const masterSeedArray = wallet.masterSeed instanceof Uint8Array 
+      ? wallet.masterSeed 
+      : new Uint8Array(Object.values(wallet.masterSeed));
+
     // Generate account base seed: SHA256(masterSeed || accountIndex)
     const accountSeedData = new Uint8Array([
-      ...wallet.masterSeed,
+      ...masterSeedArray,
       ...new Uint8Array([accountIndex])
     ])
     const baseSeed = CryptoJS.SHA256(

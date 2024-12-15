@@ -1,54 +1,111 @@
 import { Button } from "@/components/ui/button"
 import { WalletLayout } from "@/components/layout/wallet-layout"
 import { PlusCircle, Import } from "lucide-react"
-import { useEffect } from "react"
-import { useDispatch, useSelector } from 'react-redux'
-import { fetchChainInfo } from './lib/store/slices/blockchainSlice'
-import type { RootState } from './lib/store'
+import { useEffect, useState } from "react"
+import { SecureStorage } from "@/lib/utils/storage"
+import { CreateWallet } from "@/components/wallet/CreateWallet"
+import { UnlockWallet } from "@/components/wallet/UnlockWallet"
+import { WalletDashboard } from "@/components/wallet/WalletDashboard"
 
-function App() {
-  const dispatch = useDispatch()
-  const { info: chainInfo, loading, error } = useSelector((state: RootState) => state.blockchain)
+type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard'
 
+export function App() {
+  const [view, setView] = useState<WalletView>('welcome')
+  const [loading, setLoading] = useState(true)
+  const [wallet, setWallet] = useState<any>(null)
+
+  // Check for existing wallet on load
   useEffect(() => {
-    dispatch(fetchChainInfo())
-  }, [dispatch])
+    const checkWallet = async () => {
+      try {
+        const hasWallet = await SecureStorage.hasWallet()
+        setView(hasWallet ? 'unlock' : 'welcome')
+      } catch (error) {
+        console.error('Error checking wallet:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  return (
-    <WalletLayout>
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <h2 className="text-2xl font-bold text-center mb-8">Welcome to Mochimo</h2>
-        
-        {error && (
-          <div className="text-red-500 mb-4">{error}</div>
-        )}
+    checkWallet()
+  }, [])
 
-        {loading && (
-          <div className="mb-4">Loading blockchain info...</div>
-        )}
+  // Handle successful wallet creation
+  const handleWalletCreated = async (newWallet: any) => {
+    try {
+      console.log('App: Handling wallet creation...')
+      setWallet(newWallet)
+      setView('dashboard')
+      console.log('App: Transition complete')
+    } catch (error) {
+      console.error('App: Error handling wallet creation:', error)
+    }
+  }
 
-        {chainInfo && (
-          <div className="mb-8 text-center">
-            <h3 className="font-semibold mb-2">Blockchain Info</h3>
-            <div className="text-sm">
-              <p>Block: {chainInfo.block.height}</p>
+  // Handle successful wallet unlock
+  const handleWalletUnlocked = (unlockedWallet: any, password: string) => {
+    setWallet({ ...unlockedWallet, password })
+    setView('dashboard')
+  }
+
+  if (loading) {
+    return (
+      <WalletLayout>
+        <div className="flex items-center justify-center h-full">
+          <p>Loading...</p>
+        </div>
+      </WalletLayout>
+    )
+  }
+
+  switch (view) {
+    case 'welcome':
+      return (
+        <WalletLayout>
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <h2 className="text-2xl font-bold text-center mb-8">Welcome to Mochimo</h2>
+            <div className="flex flex-col w-full max-w-xs gap-4">
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => setView('create')}
+              >
+                <PlusCircle className="mr-2" />
+                Create New Wallet
+              </Button>
+              <Button 
+                className="w-full" 
+                variant="outline" 
+                size="lg"
+                onClick={() => setView('unlock')}
+              >
+                <Import className="mr-2" />
+                Import Existing Wallet
+              </Button>
             </div>
           </div>
-        )}
+        </WalletLayout>
+      )
 
-        <div className="flex flex-col w-full max-w-xs gap-4">
-          <Button className="w-full" size="lg">
-            <PlusCircle />
-            Create New Wallet
-          </Button>
-          <Button className="w-full" variant="outline" size="lg">
-            <Import />
-            Import Existing Wallet
-          </Button>
-        </div>
-      </div>
-    </WalletLayout>
-  )
+    case 'create':
+      return (
+        <WalletLayout>
+          <CreateWallet onWalletCreated={handleWalletCreated} />
+        </WalletLayout>
+      )
+
+    case 'unlock':
+      return (
+        <WalletLayout>
+          <UnlockWallet onUnlock={(wallet, password) => handleWalletUnlocked(wallet, password)} />
+        </WalletLayout>
+      )
+
+    case 'dashboard':
+      return (
+        <WalletLayout>
+          <WalletDashboard wallet={wallet} />
+        </WalletLayout>
+      )
+  }
 }
-
-export default App
