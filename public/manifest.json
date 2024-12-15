@@ -8,7 +8,8 @@
   },
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "http://localhost:3000/*"
   ],
   "background": {
     "service_worker": "src/background/index.js",

@@ -1,12 +1,48 @@
 import { Button } from "@/components/ui/button"
 import { WalletLayout } from "@/components/layout/wallet-layout"
 import { PlusCircle, Import } from "lucide-react"
+import { useEffect, useState } from "react"
+import { MochimoService } from "./lib/services/mochimo"
+import type { BlockchainInfo } from "../server/types"
 
 function App() {
+  const [chainInfo, setChainInfo] = useState<BlockchainInfo | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchChainInfo = async () => {
+      try {
+        const info = await MochimoService.getChain()
+        setChainInfo(info)
+        console.log(info)
+      } catch (error) {
+        console.error('Error fetching chain info:', error)
+        setError('Failed to fetch blockchain information')
+      }
+    }
+
+    fetchChainInfo()
+  }, [])
+
   return (
     <WalletLayout>
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <h2 className="text-2xl font-bold text-center mb-8">Welcome to Mochimo</h2>
+        
+        {error && (
+          <div className="text-red-500 mb-4">{error}</div>
+        )}
+
+        {chainInfo && (
+          <div className="mb-8 text-center">
+            <h3 className="font-semibold mb-2">Blockchain Info</h3>
+            <div className="text-sm">
+              <p>Block: {chainInfo.block.height}</p>
+
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col w-full max-w-xs gap-4">
           <Button className="w-full" size="lg">
             <PlusCircle />
