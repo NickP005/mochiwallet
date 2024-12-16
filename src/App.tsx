@@ -13,6 +13,7 @@ export function App() {
   const [view, setView] = useState<WalletView>('welcome')
   const [loading, setLoading] = useState(true)
   const [wallet, setWallet] = useState<any>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Check for existing wallet on load
   useEffect(() => {
@@ -103,8 +104,15 @@ export function App() {
 
     case 'dashboard':
       return (
-        <WalletLayout>
-          <WalletDashboard wallet={wallet} />
+        <WalletLayout 
+          showMenu 
+          onMenuClick={() => setSidebarOpen(true)}
+        >
+          <WalletDashboard 
+            wallet={wallet} 
+            sidebarOpen={sidebarOpen} 
+            onSidebarOpenChange={setSidebarOpen} 
+          />
         </WalletLayout>
       )
   }
