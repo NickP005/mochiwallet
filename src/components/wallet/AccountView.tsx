@@ -11,7 +11,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Shield,
-  ShieldOff
+  ShieldOff,
+  Loader2
 } from 'lucide-react'
 import {
   Collapsible,
@@ -30,6 +31,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [isActivated, setIsActivated] = useState<boolean | null>(null)
   const [checkingActivation, setCheckingActivation] = useState(false)
+  const [activating, setActivating] = useState(false)
 
   // Check activation status on mount and refresh
   useEffect(() => {
@@ -88,6 +90,27 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     }
   }
 
+  // Handle activation
+  const handleActivate = async () => {
+    try {
+      setActivating(true)
+      const success = await WalletService.activateAccount(account)
+      
+      if (success) {
+        // Check activation status after a short delay to allow for network propagation
+        setTimeout(async () => {
+          await checkActivation()
+          setActivating(false)
+        }, 5000)
+      } else {
+        setActivating(false)
+      }
+    } catch (error) {
+      console.error('Error activating account:', error)
+      setActivating(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -108,9 +131,26 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               <span className="text-sm font-medium">Active</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-yellow-500" title="Account Not Activated">
-              <ShieldOff className="h-5 w-5" />
-              <span className="text-sm font-medium">Not Active</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-yellow-500" title="Account Not Activated">
+                <ShieldOff className="h-5 w-5" />
+                <span className="text-sm font-medium">Not Active</span>
+              </div>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleActivate}
+                disabled={activating}
+              >
+                {activating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Activating...
+                  </>
+                ) : (
+                  'Activate'
+                )}
+              </Button>
             </div>
           )}
         </div>

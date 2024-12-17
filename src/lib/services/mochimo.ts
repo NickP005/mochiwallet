@@ -19,6 +19,15 @@ interface TagResolveResponse {
   }>
 }
 
+interface FountainResponse {
+  success: boolean
+  error?: string
+  data?: {
+    txid?: string
+    message?: string
+  }
+}
+
 export class MochimoService {
   // Network endpoints
   static async getNetworkBalance(address: string): Promise<Balance> {
@@ -160,6 +169,24 @@ export class MochimoService {
       return await response.json()
     } catch (error) {
       console.error('Error checking health:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Activates a tag using available fountains
+   */
+  static async activateTag(wots: string): Promise<FountainResponse> {
+    try {
+      console.log('Attempting to activate tag with WOTS:', wots.slice(0, 64) + '...')
+      
+      const response = await fetch(`${API_URL}/fund/${wots}`)
+      const data = await response.json()
+      console.log('Fountain response:', data)
+      
+      return data
+    } catch (error) {
+      console.error('Error activating tag:', error)
       throw error
     }
   }

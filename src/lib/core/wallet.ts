@@ -402,4 +402,36 @@ export class WalletCore {
       return false
     }
   }
+
+  /**
+   * Activates an account using fountains
+   */
+  static async activateAccount(account: WalletAccount): Promise<boolean> {
+    try {
+      console.log('Attempting to activate account:', {
+        tag: account.tag,
+        address: account.currentWOTS.publicKey.slice(0, 64) + '...'
+      })
+
+      const response = await MochimoService.activateTag(account.currentWOTS.publicKey)
+      
+      if (response.success) {
+        console.log('Account activation successful:', {
+          tag: account.tag,
+          txid: response.data?.txid,
+          message: response.data?.message
+        })
+        return true
+      } else {
+        console.log('Account activation failed:', {
+          tag: account.tag,
+          error: response.error
+        })
+        return false
+      }
+    } catch (error) {
+      console.error('Error activating account:', error)
+      return false
+    }
+  }
 } 

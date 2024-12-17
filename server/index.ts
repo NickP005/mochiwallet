@@ -5,6 +5,13 @@ import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware'
 const app = express()
 const PORT = 9000
 
+const FOUNTAIN_URLS = [
+  'http://fountain1.mochimo.com/fund',
+  'http://fountain2.mochimo.com/fund',
+  'http://fountain3.mochimo.com/fund',
+  'http://fountain4.mochimo.com/fund'
+]
+
 // Enable CORS for extension
 app.use(cors({
   origin: '*', // Be more specific in production
@@ -27,10 +34,10 @@ const proxyOptions = {
   },
   onProxyRes: (proxyRes, req, res) => {
     proxyRes.headers['Access-Control-Allow-Origin'] = '*'
-    
+
     // Log response status
     console.log(`${new Date().toISOString()} - Response: ${proxyRes.statusCode}`)
-    
+
     // Handle binary responses (for raw blocks)
     if (req.path.startsWith('/api/bc/raw/')) {
       proxyRes.headers['content-type'] = 'application/octet-stream'
@@ -65,7 +72,50 @@ app.get('/api/health', (req, res) => {
   })
 })
 
-// Proxy all /api/* requests to Mochimo TestNet
+// Add fountain endpoint
+app.get('/api/fund/:wots', async (req, res) => {
+  const { wots } = req.params
+  console.log(`Attempting to fund WOTS: ${wots.slice(0, 64)}...`)
+
+  // Try each fountain in sequence until one succeeds
+  for (const fountainUrl of FOUNTAIN_URLS) {
+    try {
+      console.log(`Trying fountain: ${fountainUrl}`)
+      const response = await fetch(`${fountainUrl}/${wots}`)
+      const data = await response.text()
+
+      console.log('Fountain response:', {
+        url: fountainUrl,
+        success: true,
+        error: null,
+        data: data
+      })
+
+      // If successful, return the response
+
+      return res.json({
+        success: true,
+        data: data,
+        fountain: fountainUrl
+      })
+
+
+    } catch (error) {
+      console.error(`Error with fountain ${fountainUrl}:`, error)
+      // Continue to next fountain on error
+      continue // Don't send response here, try next fountain
+    }
+  }
+
+  // If all fountains failed
+  return res.json({
+    success: false,
+    error: 'All fountains failed to process the request',
+    attempts: FOUNTAIN_URLS.length
+  })
+})
+
+// Proxy all other /api/* requests to Mochimo TestNet
 app.use('/api', createProxyMiddleware({
   ...proxyOptions,
   onProxyReq: fixRequestBody
