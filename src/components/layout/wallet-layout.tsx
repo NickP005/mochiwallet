@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface WalletLayoutProps {
   children: ReactNode
@@ -35,6 +36,7 @@ export function WalletLayout({
             <h1 className="text-lg font-semibold">Mochimo Wallet</h1>
           </div>
         </div>
+        <ThemeToggle />
       </div>
 
       {/* Main Content */}
