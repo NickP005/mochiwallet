@@ -1,11 +1,8 @@
-import { useState } from 'react'
-import { WalletCore, WalletAccount } from '@/lib/core/wallet'
-import { SecureStorage } from '@/lib/utils/storage'
 import { Sidebar } from '@/components/ui/sidebar'
 import { AccountView } from '@/components/wallet/AccountView'
-import { Button } from '@/components/ui/button'
-import { Menu } from 'lucide-react'
-import { WalletService } from '@/lib/services/wallet'
+import { WalletAccount, WalletCore } from '@/lib/core/wallet'
+import { SecureStorage } from '@/lib/utils/storage'
+import { useState } from 'react'
 
 interface WalletDashboardProps {
   wallet: any
@@ -29,7 +26,7 @@ export function WalletDashboard({
       console.log('Creating new account...')
       
       const accountIndex = Object.keys(accounts).length
-      const account = await WalletService.createAccount(wallet, wallet.password!)
+      const account = WalletCore.createAccount(wallet, accountIndex)
       
       // Update wallet accounts
       wallet.accounts[accountIndex] = account

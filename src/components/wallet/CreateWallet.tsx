@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { WalletCore } from '@/lib/core/wallet'
+
 import { SecureStorage } from '@/lib/utils/storage'
 import { Mnemonic } from '@/lib/core/mnemonic'
-import { WalletService } from '@/lib/services/wallet'
+import { WalletCore } from '@/lib/core/wallet'
 
 type WizardStep = 'password' | 'confirm' | 'mnemonic' | 'verify' | 'complete'
 
@@ -77,7 +77,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       }
 
       console.log('Verification successful, creating wallet...')
-      const wallet = await WalletService.createWallet(password)
+      const wallet = await WalletCore.createMasterWallet(password)
       
       console.log('Wallet created:', wallet)
       await SecureStorage.saveWallet(wallet, password)

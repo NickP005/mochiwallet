@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { WalletAccount } from '@/lib/core/wallet'
+
 import { 
   Copy, 
   Send, 
@@ -9,14 +9,16 @@ import {
   Tag,
   ChevronDown,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Shield,
+  ShieldOff
 } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { WalletService } from '@/lib/services/wallet'
+import { WalletCore as WalletService, WalletAccount } from '@/lib/core/wallet'
 
 interface AccountViewProps {
   account: WalletAccount
@@ -26,6 +28,29 @@ interface AccountViewProps {
 export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [copying, setCopying] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [isActivated, setIsActivated] = useState<boolean | null>(null)
+  const [checkingActivation, setCheckingActivation] = useState(false)
+
+  // Check activation status on mount and refresh
+  useEffect(() => {
+    checkActivation()
+  }, [account.tag])
+
+  // Check activation status
+  const checkActivation = async () => {
+    try {
+      setCheckingActivation(true)
+      const status = await WalletService.checkActivationStatus(account)
+      setIsActivated(status)
+      // Call onUpdate to propagate activation status change
+      onUpdate(account)
+    } catch (error) {
+      console.error('Error checking activation:', error)
+      setIsActivated(false)
+    } finally {
+      setCheckingActivation(false)
+    }
+  }
 
   // Copy to clipboard helper
   const copyToClipboard = async (text: string, type: string) => {
@@ -42,8 +67,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const handleRefresh = async () => {
     try {
       setRefreshing(true)
-      // TODO: Implement refresh logic
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await checkActivation()
     } finally {
       setRefreshing(false)
     }
@@ -72,13 +96,23 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between"
       >
-        <div>
+        <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">
             {account.name || `Account ${account.index + 1}`}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your account and transactions
-          </p>
+          {checkingActivation ? (
+            <RefreshCcw className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : isActivated ? (
+            <div className="flex items-center gap-1 text-green-500" title="Account Activated">
+              <Shield className="h-5 w-5" />
+              <span className="text-sm font-medium">Active</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-yellow-500" title="Account Not Activated">
+              <ShieldOff className="h-5 w-5" />
+              <span className="text-sm font-medium">Not Active</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button

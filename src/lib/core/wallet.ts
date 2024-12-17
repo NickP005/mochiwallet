@@ -2,6 +2,7 @@ import CryptoJS from 'crypto-js'
 import { Buffer } from 'buffer'
 import { Mnemonic } from './mnemonic'
 import { WOTS } from './wots_core'
+import { MochimoService } from '../services/mochimo'
 
 const TAG_LENGTH = 24 // 12 bytes = 24 hex chars
 
@@ -251,13 +252,15 @@ export class WalletCore {
     currentAddress: string
     nextAddress: string
     usedAddresses: string[]
+    isActivated: boolean | undefined
   } {
     return {
       index: account.index,
       tag: account.tag,
       currentAddress: account.currentWOTS.publicKey,
       nextAddress: account.nextWOTS.publicKey,
-      usedAddresses: account.usedAddresses
+      usedAddresses: account.usedAddresses,
+      isActivated: account.isActivated
     }
   }
 
@@ -361,5 +364,42 @@ export class WalletCore {
     }
 
     return true
+  }
+
+  /**
+   * Checks account activation status
+   */
+  static async checkActivationStatus(account: WalletAccount): Promise<boolean> {
+    try {
+      const response = await MochimoService.resolveTag(account.tag)
+      
+      // Account is activated if addressConsensus is not empty
+      const isActivated = response.success && 
+                         response.addressConsensus && 
+                         response.addressConsensus.length > 0
+
+      if (isActivated) {
+        console.log('Account activation details:', {
+          address: response.addressConsensus,
+          balance: response.balanceConsensus,
+          nodes: response.quorum.map(q => q.node.host)
+        })
+        
+        account.isActivated = true
+      } else {
+        console.log('Account not activated:', {
+          tag: account.tag,
+          success: response.success,
+          unanimous: response.unanimous
+        })
+        account.isActivated = false
+      }
+      
+      return isActivated
+    } catch (error) {
+      console.error('Error checking activation status:', error)
+      account.isActivated = false
+      return false
+    }
   }
 } 

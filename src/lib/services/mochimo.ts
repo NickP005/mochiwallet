@@ -1,7 +1,23 @@
-
 import type { NetworkNode, BlockchainInfo, Balance, ApiResponse } from '../../../server/types'
 
 const API_URL = 'http://localhost:9000/api'
+
+interface TagResolveResponse {
+  success: boolean
+  unanimous: boolean
+  addressConsensus: string
+  balanceConsensus: string
+  quorum: Array<{
+    node: {
+      host: string
+      port: number
+      updateTime: string
+      // ... other node fields
+    }
+    address: string
+    balance: string
+  }>
+}
 
 export class MochimoService {
   // Network endpoints
@@ -107,10 +123,13 @@ export class MochimoService {
     }
   }
 
-  static async resolveTag(tag: string): Promise<string> {
+  static async resolveTag(tag: string): Promise<TagResolveResponse> {
     try {
-      const response = await fetch(`${API_URL}/resolve/${tag}`)
-      return await response.json()
+      console.log('Resolving tag:', tag)
+      const response = await fetch(`${API_URL}/net/resolve/${tag}`)
+      const data = await response.json()
+      console.log('Tag resolve response:', data)
+      return data
     } catch (error) {
       console.error('Error resolving tag:', error)
       throw error
