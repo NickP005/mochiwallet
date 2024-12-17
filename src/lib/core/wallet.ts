@@ -19,6 +19,7 @@ export interface WalletAccount {
   usedAddresses: string[]
   tag: string
   isActivated?: boolean
+  balance?: string
 }
 
 export interface MasterWallet {
@@ -244,7 +245,7 @@ export class WalletCore {
   }
 
   /**
-   * Gets account info including tag
+   * Gets account info including tag and balance
    */
   static getAccountInfo(account: WalletAccount): {
     index: number
@@ -253,6 +254,7 @@ export class WalletCore {
     nextAddress: string
     usedAddresses: string[]
     isActivated: boolean | undefined
+    balance?: string
   } {
     return {
       index: account.index,
@@ -260,7 +262,8 @@ export class WalletCore {
       currentAddress: account.currentWOTS.publicKey,
       nextAddress: account.nextWOTS.publicKey,
       usedAddresses: account.usedAddresses,
-      isActivated: account.isActivated
+      isActivated: account.isActivated,
+      balance: account.balance
     }
   }
 

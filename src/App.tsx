@@ -98,7 +98,7 @@ export function App() {
     case 'unlock':
       return (
         <WalletLayout>
-          <UnlockWallet onUnlock={(wallet, password) => handleWalletUnlocked(wallet, password)} />
+          <UnlockWallet onUnlock={handleWalletUnlocked} />
         </WalletLayout>
       )
 

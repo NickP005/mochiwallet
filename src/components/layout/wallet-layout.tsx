@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
@@ -11,41 +11,37 @@ interface WalletLayoutProps {
 
 export function WalletLayout({ 
   children, 
-  showMenu = false,
+  showMenu = false, 
   onMenuClick 
 }: WalletLayoutProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex items-center h-16 border-b px-4">
-        {/* Left section with menu */}
-        {showMenu ? (
-          <Button
-            id="hamburger-menu"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 -ml-2"
-            onClick={onMenuClick}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        ) : (
-          <div className="w-8" /> 
-        )}
-
-        {/* Center section with logo and title */}
-        <div className="flex-1 flex items-center justify-center gap-2 whitespace-nowrap">
-          <Logo size="sm" />
-          <h1 className="text-lg font-semibold">Mochimo Wallet</h1>
+    <div className="flex flex-col h-[600px] bg-background">
+      {/* Fixed Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <div className="flex items-center gap-3">
+          {showMenu ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMenuClick}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          ) : (
+            <div className="w-8" />
+          )}
+          <div className="flex items-center gap-2">
+            <Logo size="sm" />
+            <h1 className="text-lg font-semibold">Mochimo Wallet</h1>
+          </div>
         </div>
-
-        {/* Right section (empty for now, but maintains symmetry) */}
-        <div className="w-8" />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 relative">
-        {children}
+      {/* Main Content */}
+      <div className="flex-1 relative overflow-hidden">
+        <div className="absolute inset-0">
+          {children}
+        </div>
       </div>
     </div>
   )

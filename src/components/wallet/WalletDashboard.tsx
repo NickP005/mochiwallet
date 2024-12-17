@@ -2,7 +2,7 @@ import { Sidebar } from '@/components/ui/sidebar'
 import { AccountView } from '@/components/wallet/AccountView'
 import { WalletAccount, WalletCore } from '@/lib/core/wallet'
 import { SecureStorage } from '@/lib/utils/storage'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface WalletDashboardProps {
   wallet: any
@@ -18,6 +18,13 @@ export function WalletDashboard({
   const [accounts, setAccounts] = useState<Record<number, WalletAccount>>(wallet.accounts || {})
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Select first account by default
+  useEffect(() => {
+    if (Object.keys(accounts).length > 0 && selectedAccount === null) {
+      setSelectedAccount(0)
+    }
+  }, [accounts, selectedAccount])
 
   // Create new account
   const handleCreateAccount = async () => {
@@ -71,7 +78,7 @@ export function WalletDashboard({
   }
 
   return (
-    <div className="h-full relative">
+    <div className="h-full flex">
       <Sidebar
         accounts={Object.values(accounts)}
         selectedAccount={selectedAccount}
@@ -82,7 +89,7 @@ export function WalletDashboard({
         onOpenChange={onSidebarOpenChange}
       />
       
-      <main className="h-full overflow-auto px-4">
+      <main className="flex-1 h-full overflow-auto">
         {selectedAccount !== null && accounts[selectedAccount] ? (
           <AccountView 
             account={accounts[selectedAccount]}
