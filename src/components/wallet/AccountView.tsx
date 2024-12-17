@@ -16,6 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { WalletService } from '@/lib/services/wallet'
 
 interface AccountViewProps {
   account: WalletAccount
@@ -45,6 +46,21 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       await new Promise(resolve => setTimeout(resolve, 1000))
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  // Handle sign
+  const handleSign = async (message: string) => {
+    try {
+      const { signature, address } = await WalletService.signTransaction(
+        wallet,
+        account.index,
+        message,
+        wallet.password!
+      )
+      // TODO: Handle signed message
+    } catch (error) {
+      console.error('Error signing message:', error)
     }
   }
 

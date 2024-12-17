@@ -79,9 +79,15 @@ export class WalletCore {
     // Generate tag
     const tag = this.generateTag(baseSeed)
 
-    // Generate initial WOTS pairs using our new WOTS core
-    const currentKeyPair = this.generateWOTSPair(baseSeed, tag)
-    const nextKeyPair = this.generateWOTSPair(currentKeyPair.privateKey)
+    // Generate initial WOTS pairs using base seed and count
+    const currentKeyPair = this.generateWOTSPair(
+      CryptoJS.SHA256(baseSeed + '00000000').toString(),
+      tag
+    )
+    const nextKeyPair = this.generateWOTSPair(
+      CryptoJS.SHA256(baseSeed + '00000001').toString(),
+      tag
+    )
 
     const account: WalletAccount = {
       index: accountIndex,
@@ -100,11 +106,17 @@ export class WalletCore {
    * Generates a WOTS key pair
    */
   private static generateWOTSPair(seed: string, tag?: string): WOTSKeyPair {
+    console.log('Generating key pair:', { seed, tag })
     const result = this.wots.generateKeyPairFrom(seed, tag)
-    return {
+    const keyPair = {
       privateKey: seed,
       publicKey: Buffer.from(result).toString('hex')
     }
+    console.log('Generated key pair:', {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey.slice(0, 64) + '...'
+    })
+    return keyPair
   }
 
   /**
@@ -166,11 +178,32 @@ export class WalletCore {
       throw new Error(`Account ${accountIndex} not found`)
     }
 
+    console.log('Before rotation:', {
+      currentPrivateKey: account.currentWOTS.privateKey,
+      currentPublicKey: account.currentWOTS.publicKey,
+      nextPrivateKey: account.nextWOTS.privateKey,
+      nextPublicKey: account.nextWOTS.publicKey,
+      tag: account.tag
+    })
+
     // Store the used address
     account.usedAddresses.push(account.currentWOTS.publicKey)
 
-    // Generate new next key pair using current next private key as seed
-    const newNextWOTS = this.generateWOTSPair(account.nextWOTS.privateKey)
+    // Generate next seed using account base seed and current count
+    const nextCount = account.usedAddresses.length + 1 // +1 because we just added one
+    const nextSeed = CryptoJS.SHA256(
+      account.baseSeed + nextCount.toString(16).padStart(8, '0')
+    ).toString()
+
+    // Generate new next key pair
+    const newNextWOTS = this.generateWOTSPair(nextSeed, account.tag)
+
+    console.log('After generating new next:', {
+      nextCount,
+      nextSeed,
+      newNextPrivateKey: newNextWOTS.privateKey,
+      newNextPublicKey: newNextWOTS.publicKey
+    })
 
     // Rotate keys
     const updatedAccount: WalletAccount = {
@@ -178,6 +211,13 @@ export class WalletCore {
       currentWOTS: account.nextWOTS,
       nextWOTS: newNextWOTS
     }
+
+    console.log('After rotation:', {
+      currentPrivateKey: updatedAccount.currentWOTS.privateKey,
+      currentPublicKey: updatedAccount.currentWOTS.publicKey,
+      nextPrivateKey: updatedAccount.nextWOTS.privateKey,
+      nextPublicKey: updatedAccount.nextWOTS.publicKey
+    })
 
     wallet.accounts[accountIndex] = updatedAccount
     return updatedAccount

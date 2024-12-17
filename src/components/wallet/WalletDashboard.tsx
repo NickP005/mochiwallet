@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/ui/sidebar'
 import { AccountView } from '@/components/wallet/AccountView'
 import { Button } from '@/components/ui/button'
 import { Menu } from 'lucide-react'
+import { WalletService } from '@/lib/services/wallet'
 
 interface WalletDashboardProps {
   wallet: any
@@ -28,7 +29,7 @@ export function WalletDashboard({
       console.log('Creating new account...')
       
       const accountIndex = Object.keys(accounts).length
-      const account = WalletCore.createAccount(wallet, accountIndex)
+      const account = await WalletService.createAccount(wallet, wallet.password!)
       
       // Update wallet accounts
       wallet.accounts[accountIndex] = account

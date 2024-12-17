@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import * as wots from "@/lib/core/wots"
+import { WalletService } from '@/lib/services/wallet'
 
 interface UnlockWalletProps {
   onUnlock: (wallet: any, password: string) => void

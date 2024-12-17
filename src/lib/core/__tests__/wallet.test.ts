@@ -39,7 +39,7 @@ describe('WalletCore', () => {
         })
 
         it('should rotate keys after signing', () => {
-            const wallet = WalletCore.createMasterWallet()
+            const wallet = WalletCore.createMasterWallet('test')
             const account = WalletCore.createAccount(wallet, 0)
             const oldAddress = account.currentWOTS.publicKey
             const nextAddress = account.nextWOTS.publicKey
@@ -225,25 +225,25 @@ describe('WalletCore WOTS Integration', () => {
             const wallet = WalletCore.createMasterWallet('test')
             const account = WalletCore.createAccount(wallet, 0)
             
-            console.log('Initial state:')
+            console.log('\nInitial state:')
             console.log('Current private key:', account.currentWOTS.privateKey)
             console.log('Current public key:', account.currentWOTS.publicKey)
             console.log('Next private key:', account.nextWOTS.privateKey)
             console.log('Next public key:', account.nextWOTS.publicKey)
+            console.log('Tag:', account.tag)
 
             const originalAddress = account.currentWOTS.publicKey
             const message = 'test message'
             
-            const { signature } = WalletCore.signTransaction(wallet, 0, message)
+            const { signature, address } = WalletCore.signTransaction(wallet, 0, message)
+            
             console.log('\nAfter signing:')
             console.log('Original address:', originalAddress)
             console.log('New current address:', wallet.accounts[0].currentWOTS.publicKey)
             console.log('New next address:', wallet.accounts[0].nextWOTS.publicKey)
             console.log('Used addresses:', wallet.accounts[0].usedAddresses)
-            expect(signature).toBeDefined()
 
-            const newAddress = wallet.accounts[0].currentWOTS.publicKey
-            expect(newAddress).not.toEqual(originalAddress)
+            expect(wallet.accounts[0].currentWOTS.publicKey).not.toEqual(originalAddress)
             expect(wallet.accounts[0].usedAddresses).toContain(originalAddress)
         })
     })
