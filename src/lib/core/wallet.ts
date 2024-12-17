@@ -1,34 +1,35 @@
 import CryptoJS from 'crypto-js'
 import { Buffer } from 'buffer'
-import { hexToByteArray } from '../utils/wallet'
-import * as WOTS from './wots'
 import { Mnemonic } from './mnemonic'
+import { WOTS } from './wots_core'
 
 const TAG_LENGTH = 24 // 12 bytes = 24 hex chars
-
-export interface WalletAccount {
-  index: number
-  baseSeed: string
-  currentWOTS: WOTSKeyPair
-  nextWOTS: WOTSKeyPair
-  usedAddresses: string[]  // Track used addresses
-  tag: string  // Add tag field
-  isActivated?: boolean  // Add activation status
-}
 
 export interface WOTSKeyPair {
   privateKey: string
   publicKey: string
 }
 
+export interface WalletAccount {
+  index: number
+  baseSeed: string
+  currentWOTS: WOTSKeyPair
+  nextWOTS: WOTSKeyPair
+  usedAddresses: string[]
+  tag: string
+  isActivated?: boolean
+}
+
 export interface MasterWallet {
   mnemonic: string
   masterSeed: Uint8Array
   accounts: { [index: number]: WalletAccount }
-  password?: string  // Add password to the interface
+  password?: string
 }
 
 export class WalletCore {
+  private static wots = new WOTS()
+
   /**
    * Creates a new master wallet
    */
@@ -36,7 +37,6 @@ export class WalletCore {
     const mnemonic = existingMnemonic || Mnemonic.generate()
     const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
 
-    // Ensure masterSeed is Uint8Array
     const masterSeedArray = masterSeed instanceof Uint8Array 
       ? masterSeed 
       : new Uint8Array(Object.values(masterSeed))
@@ -45,7 +45,7 @@ export class WalletCore {
       mnemonic,
       masterSeed: masterSeedArray,
       accounts: {},
-      password: passphrase  // Store password in wallet
+      password: passphrase
     }
   }
 
@@ -56,43 +56,7 @@ export class WalletCore {
     if (!Mnemonic.validate(mnemonic)) {
       throw new Error('Invalid mnemonic')
     }
-
-    const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
-    
-    // Ensure masterSeed is Uint8Array
-    const masterSeedArray = masterSeed instanceof Uint8Array 
-      ? masterSeed 
-      : new Uint8Array(Object.values(masterSeed))
-
-    return {
-      mnemonic,
-      masterSeed: masterSeedArray,
-      accounts: {},
-      password: passphrase  // Store password in wallet
-    }
-  }
-
-  /**
-   * Generates a deterministic tag for an account
-   * Format: 12 bytes (24 hex chars) that doesn't start with 0x00 or 0x42
-   */
-  private static generateTag(baseSeed: string): string {
-    //generate until we get a valid tag that doesn't start with 00 or 42
-    let counter = 0
-    
-    while (true) {
-      // Use baseSeed and counter to generate deterministic tag
-      const tagSeed = Buffer.from(baseSeed + counter.toString(16).padStart(16, '0')).toString('hex')
-      const hash = CryptoJS.SHA256(tagSeed).toString()
-      const candidate = hash.slice(0, TAG_LENGTH).toUpperCase()
-      
-      // Check if tag starts with invalid prefixes (00 or 42)
-      if (!candidate.startsWith('00') && !candidate.startsWith('42')) {
-        return candidate
-      }
-      
-      counter++
-    }
+    return this.createMasterWallet(passphrase, mnemonic)
   }
 
   /**
@@ -103,33 +67,27 @@ export class WalletCore {
       throw new Error(`Account ${accountIndex} already exists`)
     }
 
-    // Ensure masterSeed is Uint8Array
-    const masterSeedArray = wallet.masterSeed instanceof Uint8Array 
-      ? wallet.masterSeed 
-      : new Uint8Array(Object.values(wallet.masterSeed));
-
-    // Generate account base seed: SHA256(masterSeed || accountIndex)
+    // Generate account base seed
     const accountSeedData = new Uint8Array([
-      ...masterSeedArray,
+      ...wallet.masterSeed,
       ...new Uint8Array([accountIndex])
     ])
     const baseSeed = CryptoJS.SHA256(
       Buffer.from(accountSeedData).toString('hex')
     ).toString()
-    
-    // Generate tag for the account
+
+    // Generate tag
     const tag = this.generateTag(baseSeed)
 
-    // Generate initial WOTS pairs
-    const currentWOTS = this.generateWOTSPair(baseSeed, Buffer.from(tag).toString("hex"))
-    const nextWOTS = this.generateWOTSPair(currentWOTS.privateKey)
-
+    // Generate initial WOTS pairs using our new WOTS core
+    const currentKeyPair = this.generateWOTSPair(baseSeed, tag)
+    const nextKeyPair = this.generateWOTSPair(currentKeyPair.privateKey)
 
     const account: WalletAccount = {
       index: accountIndex,
       baseSeed,
-      currentWOTS,
-      nextWOTS,
+      currentWOTS: currentKeyPair,
+      nextWOTS: nextKeyPair,
       usedAddresses: [],
       tag
     }
@@ -139,53 +97,35 @@ export class WalletCore {
   }
 
   /**
-   * Rotates account's WOTS keys after use
+   * Generates a WOTS key pair
    */
-  static rotateAccountKeys(wallet: MasterWallet, accountIndex: number): WalletAccount {
-    const account = wallet.accounts[accountIndex]
-    if (!account) {
-      throw new Error(`Account ${accountIndex} not found`)
+  private static generateWOTSPair(seed: string, tag?: string): WOTSKeyPair {
+    const result = this.wots.generateKeyPairFrom(seed, tag)
+    return {
+      privateKey: seed,
+      publicKey: Buffer.from(result).toString('hex')
     }
-
-    console.log('Rotating keys:')
-    console.log('Current private key:', account.currentWOTS.privateKey)
-    console.log('Next private key:', account.nextWOTS.privateKey)
-
-    // Store the used address
-    account.usedAddresses.push(account.currentWOTS.publicKey)
-
-    // Generate new next key pair using current next private key as seed
-    const newNextWOTS = this.generateWOTSPair(account.nextWOTS.privateKey)
-    
-    console.log('New next private key:', newNextWOTS.privateKey)
-
-    // Rotate keys
-    const updatedAccount: WalletAccount = {
-      ...account,
-      currentWOTS: account.nextWOTS,
-      nextWOTS: newNextWOTS
-    }
-
-    console.log('After rotation:')
-    console.log('New current private key:', updatedAccount.currentWOTS.privateKey)
-    console.log('New next private key:', updatedAccount.nextWOTS.privateKey)
-
-    wallet.accounts[accountIndex] = updatedAccount
-    return updatedAccount
   }
 
   /**
-   * Gets all addresses for an account (current, next, and used)
+   * Signs a message with a private key
    */
-  static getAccountAddresses(account: WalletAccount): {
-    current: string
-    next: string
-    used: string[]
-  } {
-    return {
-      current: account.currentWOTS.publicKey,
-      next: account.nextWOTS.publicKey,
-      used: account.usedAddresses
+  static sign(message: string, privateKey: string): string {
+    try {
+      // Convert message to Uint8Array
+      const messageBytes = Buffer.from(message)
+
+      // Sign using WOTS core
+      const signature = this.wots.generateSignatureFrom(
+        privateKey,
+        messageBytes
+      )
+
+      // Convert signature to hex string
+      return Buffer.from(signature).toString('hex')
+    } catch (error) {
+      console.error('Signing error:', error)
+      throw new Error('Failed to sign message')
     }
   }
 
@@ -205,7 +145,7 @@ export class WalletCore {
     // Get the current address before signing
     const currentAddress = account.currentWOTS.publicKey
 
-    // Sign the transaction
+    // Sign the message using the sign method
     const signature = this.sign(transaction, account.currentWOTS.privateKey)
     
     // After signing, rotate the keys
@@ -218,128 +158,47 @@ export class WalletCore {
   }
 
   /**
-   * Generates WOTS keys and seeds
-   * @author NickP55
+   * Rotates account's WOTS keys after use
    */
-  public static generateWots(seed: string, tag?: string): [number[], string, string, string] {
-    const privateSeed = CryptoJS.SHA256(seed + "seed").toString()
-    const publicSeed = CryptoJS.SHA256(seed + "publ").toString()
-    const addressSeed = CryptoJS.SHA256(seed + "addr").toString()
-    
-    const publicKey = WOTS.wots_public_key_gen(
-      hexToByteArray(privateSeed),
-      hexToByteArray(publicSeed),
-      hexToByteArray(addressSeed)
-    )
-    
-    const wots = [...publicKey]
-    wots.pushArray(hexToByteArray(publicSeed))
-    wots.pushArray(hexToByteArray(addressSeed).slice(0, 20))
-    
-    if (!tag || tag.length !== 24) {
-      // Default tag
-      wots.pushArray([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
-    } else {
-      wots.pushArray(hexToByteArray(tag))
+  static rotateAccountKeys(wallet: MasterWallet, accountIndex: number): WalletAccount {
+    const account = wallet.accounts[accountIndex]
+    if (!account) {
+      throw new Error(`Account ${accountIndex} not found`)
     }
-    
-    return [wots, privateSeed, publicSeed, addressSeed]
-  }
 
-  /**
-   * Generates a WOTS key pair from seed
-   */
-  private static generateWOTSPair(seed: string, tag?: string): WOTSKeyPair {
-    const [wots, privateSeed, publicSeed, addressSeed] = WalletCore.generateWots(seed)
-    
-    // Concatenate all parts with a delimiter
-    const publicKeyParts = [
-      Buffer.from(wots).toString('hex'),
-      publicSeed,
-      addressSeed
-    ]
-    
-    return {
-      privateKey: privateSeed,
-      publicKey: publicKeyParts.join('|')  // Use | as delimiter
+    // Store the used address
+    account.usedAddresses.push(account.currentWOTS.publicKey)
+
+    // Generate new next key pair using current next private key as seed
+    const newNextWOTS = this.generateWOTSPair(account.nextWOTS.privateKey)
+
+    // Rotate keys
+    const updatedAccount: WalletAccount = {
+      ...account,
+      currentWOTS: account.nextWOTS,
+      nextWOTS: newNextWOTS
     }
+
+    wallet.accounts[accountIndex] = updatedAccount
+    return updatedAccount
   }
 
   /**
-   * Validates an address
+   * Generates a deterministic tag for an account
    */
-  static isValidAddress(address: string): boolean {
-    if (address.length !== 72) return false // 32 bytes address + 4 bytes checksum = 72 hex chars
+  private static generateTag(baseSeed: string): string {
+    let counter = 0
     
-    const addressHash = address.slice(0, 64)
-    const checksum = address.slice(64)
-    
-    const calculatedChecksum = CryptoJS.SHA256(addressHash).toString().slice(0, 8)
-    
-    return checksum === calculatedChecksum
-  }
-
-  /**
-   * Signs a message
-   */
-  static sign(message: string, privateKey: string): string {
-    // Generate seeds deterministically
-    const publicSeed = CryptoJS.SHA256(privateKey + "publ").toString()
-    const addressSeed = CryptoJS.SHA256(privateKey + "addr").toString()
-    
-    const messageBytes = Buffer.from(message).toJSON().data
-    const signature = WOTS.wots_sign(
-      messageBytes,
-      hexToByteArray(privateKey),
-      hexToByteArray(publicSeed),
-      hexToByteArray(addressSeed)
-    )
-
-    // Concatenate signature and seeds with delimiter
-    const signatureParts = [
-      Buffer.from(signature).toString('hex'),
-      publicSeed,
-      addressSeed
-    ]
-
-    return signatureParts.join('|')  // Use | as delimiter
-  }
-
-  /**
-   * Verifies a signature
-   */
-  static verify(message: string, signatureStr: string, publicKeyStr: string): boolean {
-    try {
-      // Split signature and public key parts
-      const [signatureHex, sigPublicSeed, sigAddressSeed] = signatureStr.split('|')
-      const [wotsHex, pubPublicSeed, pubAddressSeed] = publicKeyStr.split('|')
-
-      const signatureBytes = hexToByteArray(signatureHex)
-      const messageBytes = Buffer.from(message).toJSON().data
-      const wotsBytes = hexToByteArray(wotsHex)
-
-      // Verify using the signature's seeds
-      const reconstructedKey = WOTS.wots_publickey_from_sig(
-        signatureBytes,
-        messageBytes,
-        hexToByteArray(sigPublicSeed),
-        hexToByteArray(sigAddressSeed)
-      )
-
-      // Compare only the WOTS part
-      const reconstructedHex = Buffer.from(reconstructedKey).toString('hex')
-      const originalHex = Buffer.from(wotsBytes).toString('hex')
-
-      console.log('Verification details:', {
-        reconstructedHex: reconstructedHex.slice(0, 64) + '...',
-        originalHex: originalHex.slice(0, 64) + '...',
-        match: reconstructedHex === originalHex
-      })
-
-      return reconstructedHex === originalHex
-    } catch (error) {
-      console.error('Verification error:', error)
-      return false
+    while (true) {
+      const tagSeed = Buffer.from(baseSeed + counter.toString(16).padStart(16, '0')).toString('hex')
+      const hash = CryptoJS.SHA256(tagSeed).toString()
+      const candidate = hash.slice(0, TAG_LENGTH).toUpperCase()
+      
+      if (!candidate.startsWith('00') && !candidate.startsWith('42')) {
+        return candidate
+      }
+      
+      counter++
     }
   }
 
@@ -361,5 +220,106 @@ export class WalletCore {
       usedAddresses: account.usedAddresses
     }
   }
-  
+
+  /**
+   * Verifies a signature
+   */
+  static verify(message: string, signature: string, publicKey: string): boolean {
+    try {
+      // Convert hex strings to Uint8Arrays
+      const signatureBytes = Buffer.from(signature, 'hex')
+      const messageBytes = Buffer.from(message)
+      const publicKeyBytes = Buffer.from(publicKey, 'hex')
+
+      // Extract components from public key
+      // Format: [WOTS public key (2144 bytes) | pub_seed (32 bytes) | addr_seed (20 bytes) | tag (12 bytes)]
+      const wotsKey = publicKeyBytes.slice(0, 2144)
+      const pubSeed = publicKeyBytes.slice(2144, 2144 + 32)
+      const addrSeed = publicKeyBytes.slice(2144 + 32, 2144 + 32 + 20)
+
+      // Use WOTS core to verify
+      const reconstructedKey = this.wots.verifySignature(
+        signatureBytes,
+        messageBytes,
+        pubSeed,
+        addrSeed
+      )
+
+      // Compare only the WOTS public key part
+      return Buffer.from(reconstructedKey).toString('hex') === 
+             Buffer.from(wotsKey).toString('hex')
+    } catch (error) {
+      console.error('Verification error:', error)
+      return false
+    }
+  }
+
+  /**
+   * Validates an address
+   */
+  static isValidAddress(address: string): boolean {
+    try {
+      // Check length
+      if (!address || address.length !== 2144 + 32 + 20 + 12) {
+        return false
+      }
+
+      // Check if it's valid hex
+      if (!/^[0-9a-fA-F]+$/.test(address)) {
+        return false
+      }
+
+      // Extract components
+      const publicKeyBytes = Buffer.from(address, 'hex')
+      const tag = publicKeyBytes.slice(-12)
+
+      // Validate tag format
+      const tagHex = Buffer.from(tag).toString('hex').toUpperCase()
+      if (tagHex.startsWith('00') || tagHex.startsWith('42')) {
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Address validation error:', error)
+      return false
+    }
+  }
+
+  /**
+   * Gets all addresses for an account (current, next, and used)
+   */
+  static getAccountAddresses(account: WalletAccount): {
+    current: string
+    next: string
+    used: string[]
+  } {
+    return {
+      current: account.currentWOTS.publicKey,
+      next: account.nextWOTS.publicKey,
+      used: account.usedAddresses
+    }
+  }
+
+  /**
+   * Validates a tag format
+   */
+  static isValidTag(tag: string): boolean {
+    if (!tag || tag.length !== 24) {
+      return false
+    }
+
+    // Must be hex and uppercase
+    const validHex = /^[0-9A-F]{24}$/
+    if (!validHex.test(tag)) {
+      return false
+    }
+
+    // Must not start with 00 or 42
+    if (tag.startsWith('00') || tag.startsWith('42')) {
+      return false
+    }
+
+    return true
+  }
 } 

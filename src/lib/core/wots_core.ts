@@ -1,6 +1,3 @@
-import { Mnemonic } from "./mnemonic"
-import { sha256 } from "./wots"
-import { wots_public_key_gen } from "./wots"
 import CryptoJS from 'crypto-js'
 
 export interface WOTSKeyPair {
@@ -463,5 +460,23 @@ export class WOTS {
     }
     
     return result
+  }
+
+  /**
+   * Verifies a signature
+   */
+  public verifySignature(
+    signature: Uint8Array,
+    message: Uint8Array,
+    pubSeed: Uint8Array,
+    addrSeed: Uint8Array
+  ): Uint8Array {
+    const messageHash = this.sha256(message)
+    return this.wots_publickey_from_sig(
+      signature,
+      messageHash,
+      pubSeed,
+      addrSeed
+    )
   }
 }
