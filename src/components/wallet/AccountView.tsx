@@ -28,6 +28,22 @@ import {
 } from "@/components/ui/collapsible"
 import { WalletCore as WalletService, WalletAccount } from '@/lib/core/wallet'
 import { MochimoService } from '@/lib/services/mochimo'
+import { SendTransaction } from './SendTransaction'
+import BigNumber from 'bignumber.js'
+
+// Configure BigNumber
+BigNumber.config({
+  DECIMAL_PLACES: 8,
+  ROUNDING_MODE: BigNumber.ROUND_DOWN,
+  FORMAT: {
+    decimalSeparator: '.',
+    groupSeparator: '',
+    groupSize: 3,
+    secondaryGroupSize: 0,
+    fractionGroupSeparator: '',
+    fractionGroupSize: 0
+  }
+})
 
 interface AccountViewProps {
   account: WalletAccount
@@ -49,6 +65,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [checkingActivation, setCheckingActivation] = useState(false)
   const [activating, setActivating] = useState(false)
   const [balance, setBalance] = useState<string | null>(null)
+  const [showSend, setShowSend] = useState(false)
 
   // Temporary transactions (we'll implement real data later)
   const tempTransactions: Transaction[] = [
@@ -71,13 +88,35 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     checkActivation()
   }, [account.tag])
 
-  // Format balance to MCM
-  const formatBalance = (balanceStr: string | null): string => {
-    if (!balanceStr) return '0.00 MCM'
-    const balance = BigInt(balanceStr)
-    const whole = balance / BigInt(1e8)
-    const fraction = balance % BigInt(1e8)
-    return `${whole}.${fraction.toString().padStart(8, '0')} MCM`
+  // Format balance to show both nanoMCM and MCM
+  const formatBalance = (balanceStr: string | null): { nano: string, mcm: string } => {
+    if (!balanceStr) return { 
+      nano: '0', 
+      mcm: '0.000000000' 
+    }
+    
+    try {
+      console.log('Raw balance:', balanceStr)
+      
+      const balance = new BigNumber(balanceStr)
+      const mcm = balance.dividedBy(new BigNumber('1000000000'))
+      
+      console.log('BigNumber calc:', {
+        original: balance.toString(),
+        divided: mcm.toString()
+      })
+      
+      return {
+        nano: balance.toString(),
+        mcm: mcm.toFixed(9)
+      }
+    } catch (error) {
+      console.error('Error formatting balance:', error)
+      return { 
+        nano: '0', 
+        mcm: '0.000000000' 
+      }
+    }
   }
 
   // Check activation status and balance
@@ -90,8 +129,13 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       // Update balance if account is activated
       if (response) {
         const tagResponse = await MochimoService.resolveTag(account.tag)
+        console.log('Tag Response:', tagResponse)
+        
         if (tagResponse.success && tagResponse.balanceConsensus) {
-          setBalance(tagResponse.balanceConsensus)
+          // Balance is already in nanoMCM, no need to convert
+          const rawBalance = tagResponse.balanceConsensus
+          console.log('Raw Balance from API:', rawBalance)
+          setBalance(rawBalance)
         }
       } else {
         setBalance(null)
@@ -146,6 +190,11 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     } catch (error) {
       console.error('Failed to copy:', error)
     }
+  }
+
+  const handleSend = async (data: { tag: string; amount: string }) => {
+    // Implement send transaction logic here
+    console.log('Sending transaction:', data)
   }
 
   return (
@@ -217,21 +266,28 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
             {/* Balance */}
             {isActivated && (
-              <div className="flex items-baseline gap-3">
+              <div className="flex flex-col gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Hash className="h-4 w-4" />
                     <span>Available Balance</span>
                   </div>
                   <div className="font-mono">
-                    <span className="text-2xl font-bold text-primary">
-                      {checkingActivation ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : (
-                        formatBalance(balance).split(' ')[0]
-                      )}
-                    </span>
-                    <span className="text-lg ml-2 text-muted-foreground">MCM</span>
+                    {checkingActivation ? (
+                      <span className="text-muted-foreground">Loading...</span>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="text-2xl font-bold text-primary">
+                            {formatBalance(balance).mcm}
+                          </span>
+                          <span className="text-lg ml-2 text-muted-foreground">MCM</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {formatBalance(balance).nano} nanoMCM
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -249,6 +305,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               size="lg"
               className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
               disabled={!isActivated}
+              onClick={() => setShowSend(true)}
             >
               <Send className="h-6 w-6" />
               <span>Send</span>
@@ -386,6 +443,13 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               </CollapsibleContent>
             </Collapsible>
           </motion.div>
+
+          {showSend && (
+            <SendTransaction
+              onClose={() => setShowSend(false)}
+              onSend={handleSend}
+            />
+          )}
         </div>
       </div>
     </div>
