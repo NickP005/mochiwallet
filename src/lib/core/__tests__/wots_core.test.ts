@@ -21,23 +21,23 @@ describe('WOTS Core Implementation', () => {
   describe('Key Generation', () => {
     it('should generate key pair from seed', () => {
       const seed = 'test_seed_123'
-      const result = wots.generateKeyPairFrom(seed)
+      const result = wots.generatePKFrom(seed)
       
       expect(result).toBeInstanceOf(Uint8Array)
       expect(result.length).toBe(2144 + 32 + 20 + 12) // public key + pub_seed + addr_seed + tag
     })
 
     it('should generate different keys for different seeds', () => {
-      const key1 = wots.generateKeyPairFrom('seed1')
-      const key2 = wots.generateKeyPairFrom('seed2')
+      const key1 = wots.generatePKFrom('seed1')
+      const key2 = wots.generatePKFrom('seed2')
       
       expect(Buffer.from(key1).toString('hex'))
         .not.toBe(Buffer.from(key2).toString('hex'))
     })
 
     it('should generate consistent keys for same seed', () => {
-      const key1 = wots.generateKeyPairFrom('same_seed')
-      const key2 = wots.generateKeyPairFrom('same_seed')
+      const key1 = wots.generatePKFrom('same_seed')
+      const key2 = wots.generatePKFrom('same_seed')
       
       expect(Buffer.from(key1).toString('hex'))
         .toBe(Buffer.from(key2).toString('hex'))
@@ -46,7 +46,7 @@ describe('WOTS Core Implementation', () => {
     it('should handle custom tags', () => {
       const seed = 'test_seed'
       const tag = '123456789012345678901234' // 24 chars
-      const result = wots.generateKeyPairFrom(seed, tag)
+      const result = wots.generatePKFrom(seed, tag)
       
       // Extract tag from result (last 12 bytes)
       const resultTag = Buffer.from(result.slice(-12)).toString('hex')
@@ -56,7 +56,7 @@ describe('WOTS Core Implementation', () => {
     it('should use default tag when tag is invalid', () => {
       const seed = 'test_seed'
       const invalidTag = '123' // too short
-      const result = wots.generateKeyPairFrom(seed, invalidTag)
+      const result = wots.generatePKFrom(seed, invalidTag)
       
       // Default tag should be [66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0]
       const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
@@ -71,7 +71,7 @@ describe('WOTS Core Implementation', () => {
       const message = new TextEncoder().encode('test message')
       
       // Generate key pair
-      const keyPair = wots.generateKeyPairFrom(seed)
+      const keyPair = wots.generatePKFrom(seed)
       
       // Generate signature
       const signature = wots.generateSignatureFrom(seed, message)
@@ -99,7 +99,7 @@ describe('WOTS Core Implementation', () => {
       const wrongMessage = new TextEncoder().encode('wrong message')
       
       // Generate key pair
-      const keyPair = wots.generateKeyPairFrom(seed)
+      const keyPair = wots.generatePKFrom(seed)
       
       // Generate signature
       const signature = wots.generateSignatureFrom(seed, message)
@@ -190,53 +190,53 @@ describe('WOTS Core Implementation', () => {
     describe('Key Generation Edge Cases', () => {
       it('should handle empty seed', () => {
         const seed = ''
-        expect(() => wots.generateKeyPairFrom(seed)).not.toThrow()
+        expect(() => wots.generatePKFrom(seed)).not.toThrow()
       })
 
       it('should handle very long seeds', () => {
         const seed = 'x'.repeat(10000)
-        expect(() => wots.generateKeyPairFrom(seed)).not.toThrow()
+        expect(() => wots.generatePKFrom(seed)).not.toThrow()
       })
 
       it('should handle special characters in seed', () => {
         const seed = '!@#$%^&*()_+{}[]|":;<>?'
-        expect(() => wots.generateKeyPairFrom(seed)).not.toThrow()
+        expect(() => wots.generatePKFrom(seed)).not.toThrow()
       })
 
       it('should handle unicode characters in seed', () => {
         const seed = '🔑🗝️👨‍💻'
-        expect(() => wots.generateKeyPairFrom(seed)).not.toThrow()
+        expect(() => wots.generatePKFrom(seed)).not.toThrow()
       })
     })
 
     describe('Tag Edge Cases', () => {
       it('should reject tag with special characters', () => {
         const tag = '123456789!@#456789!@#123'
-        expect(() => wots.generateKeyPairFrom('seed', tag)).toThrow('Invalid tag format')
+        expect(() => wots.generatePKFrom('seed', tag)).toThrow('Invalid tag format')
       })
 
       it('should reject tag with non-hex characters', () => {
         const tag = '123456789GHI456789JKL123'
-        expect(() => wots.generateKeyPairFrom('seed', tag)).toThrow('Invalid tag format')
+        expect(() => wots.generatePKFrom('seed', tag)).toThrow('Invalid tag format')
       })
 
       it('should accept valid hex tag', () => {
         const tag = '123456789ABC456789DEF123'
-        const result = wots.generateKeyPairFrom('seed', tag)
+        const result = wots.generatePKFrom('seed', tag)
         const resultTag = Buffer.from(result.slice(-12)).toString('hex')
         expect(resultTag).toBe(tag.toLowerCase())
       })
 
       it('should handle tag with exactly 23 characters (invalid length)', () => {
         const tag = '12345678901234567890123' // 23 chars
-        const result = wots.generateKeyPairFrom('seed', tag)
+        const result = wots.generatePKFrom('seed', tag)
         const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
         expect(Array.from(result.slice(-12))).toEqual(Array.from(defaultTag))
       })
 
       it('should handle tag with exactly 25 characters (invalid length)', () => {
         const tag = '1234567890123456789012345' // 25 chars
-        const result = wots.generateKeyPairFrom('seed', tag)
+        const result = wots.generatePKFrom('seed', tag)
         const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
         expect(Array.from(result.slice(-12))).toEqual(Array.from(defaultTag))
       })
@@ -274,7 +274,7 @@ describe('WOTS Core Implementation', () => {
   describe('Performance Tests', () => {
     it('should generate key pair within reasonable time', () => {
       const start = performance.now()
-      wots.generateKeyPairFrom('test_seed')
+      wots.generatePKFrom('test_seed')
       const end = performance.now()
       expect(end - start).toBeLessThan(1000) // Should take less than 1 second
     })
@@ -292,7 +292,7 @@ describe('WOTS Core Implementation', () => {
     it('should handle multiple key generations without memory issues', () => {
       const iterations = 100
       for (let i = 0; i < iterations; i++) {
-        wots.generateKeyPairFrom(`seed_${i}`)
+        wots.generatePKFrom(`seed_${i}`)
       }
       // If we reach here without out-of-memory error, test passes
     })

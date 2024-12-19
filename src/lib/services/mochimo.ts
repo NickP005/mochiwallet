@@ -2,7 +2,7 @@ import type { NetworkNode, BlockchainInfo, Balance, ApiResponse } from '../../..
 
 const API_URL = 'http://localhost:9000/api'
 
-interface TagResolveResponse {
+export interface TagResolveResponse {
   success: boolean
   unanimous: boolean
   addressConsensus: string
@@ -19,7 +19,7 @@ interface TagResolveResponse {
   }>
 }
 
-interface FountainResponse {
+export interface FountainResponse {
   success: boolean
   error?: string
   data?: {

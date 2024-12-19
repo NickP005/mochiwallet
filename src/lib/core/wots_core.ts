@@ -44,7 +44,7 @@ export class WOTS {
     this.validate_params()
   }
 
-  public generateKeyPairFrom(wots_seed: string, tag?: string): Uint8Array {
+  public generatePKFrom(wots_seed: string, tag?: string): Uint8Array {
     // if (!wots_seed) {
     //   throw new Error('Seed is required')
     // }

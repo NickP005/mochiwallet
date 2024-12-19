@@ -1,250 +1,180 @@
 import { WalletCore } from '../wallet'
+import { MochimoService } from '@/lib/services/mochimo'
+import type { TagResolveResponse } from '@/lib/services/mochimo'
+
+// Mock the entire module
+jest.mock('@/lib/services/mochimo')
 
 describe('WalletCore', () => {
+    beforeEach(() => {
+        jest.clearAllMocks()
+    })
 
-    describe('master wallet', () => {
-        it('should create new master wallet', () => {
+    describe('Wallet Creation', () => {
+        it('should create a master wallet', () => {
             const wallet = WalletCore.createMasterWallet()
             expect(wallet.mnemonic).toBeDefined()
-            expect(wallet.masterSeed).toBeDefined()
+            expect(wallet.masterSeed).toBeInstanceOf(Uint8Array)
             expect(wallet.accounts).toEqual({})
         })
 
         it('should recover wallet from mnemonic', () => {
-            const wallet1 = WalletCore.createMasterWallet('test')
-            const wallet2 = WalletCore.recoverWallet(wallet1.mnemonic, 'test')
-
-            expect(wallet2.masterSeed).toEqual(wallet1.masterSeed)
+            const originalWallet = WalletCore.createMasterWallet()
+            const recoveredWallet = WalletCore.recoverWallet(originalWallet.mnemonic)
+            expect(recoveredWallet.masterSeed).toEqual(originalWallet.masterSeed)
         })
     })
 
-    describe('account management', () => {
-        it('should create new account', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const account = WalletCore.createAccount(wallet, 0)
+    describe('Account Management', () => {
+        let wallet: ReturnType<typeof WalletCore.createMasterWallet>
 
+        beforeEach(() => {
+            wallet = WalletCore.createMasterWallet()
+        })
+
+        it('should create an account', () => {
+            const account = WalletCore.createAccount(wallet, 0)
             expect(account.index).toBe(0)
-            expect(account.currentWOTS).toBeDefined()
-            expect(account.nextWOTS).toBeDefined()
-            expect(account.usedAddresses).toEqual([])
+            expect(account.tag).toHaveLength(24)
+            expect(account.wotsIndex).toBe(0)
+            expect(account.isActivated).toBe(false)
         })
 
-        it('should create different accounts from same wallet', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const account1 = WalletCore.createAccount(wallet, 0)
-            const account2 = WalletCore.createAccount(wallet, 1)
-
-            expect(account1.baseSeed).not.toBe(account2.baseSeed)
-            expect(account1.currentWOTS.publicKey).not.toBe(account2.currentWOTS.publicKey)
+        it('should not allow duplicate account indices', () => {
+            WalletCore.createAccount(wallet, 0)
+            expect(() => WalletCore.createAccount(wallet, 0)).toThrow()
         })
 
-        it('should rotate keys after signing', () => {
-            const wallet = WalletCore.createMasterWallet('test')
+        it('should generate valid tags', () => {
             const account = WalletCore.createAccount(wallet, 0)
-            const oldAddress = account.currentWOTS.publicKey
-            const nextAddress = account.nextWOTS.publicKey
-
-            const { signature, address } = WalletCore.signTransaction(wallet, 0, 'test transaction')
-            console.log(signature, address)
-            expect(address).toBe(oldAddress)
-            expect(wallet.accounts[0].currentWOTS.publicKey).toBe(nextAddress)
-            expect(wallet.accounts[0].usedAddresses).toContain(oldAddress)
+            expect(WalletCore.isValidTag(account.tag)).toBe(true)
+            expect(account.tag).not.toMatch(/^00/)
+            expect(account.tag).not.toMatch(/^42/)
         })
     })
 
-    describe('account tags', () => {
-        it('should generate tag when creating account', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const account = WalletCore.createAccount(wallet, 0)
+    describe('WOTS Address Management', () => {
+        let wallet: ReturnType<typeof WalletCore.createMasterWallet>
+        let account: ReturnType<typeof WalletCore.createAccount>
 
-            expect(account.tag).toBeDefined()
-            expect(account.tag).toHaveLength(24)
-            expect(account.tag).toMatch(/^[0-9A-F]{24}$/)
-            expect(account.tag.startsWith('00')).toBe(false)
-            expect(account.tag.startsWith('42')).toBe(false)
+        beforeEach(() => {
+            wallet = WalletCore.createMasterWallet()
+            account = WalletCore.createAccount(wallet, 0)
+            jest.clearAllMocks()
         })
 
-        it('should generate multiple valid tags', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const tags = new Set()
+        it('should compute correct WOTS address', () => {
+            const address = (WalletCore as any).computeWOTSAddress(
+                wallet.masterSeed,
+                account,
+                0
+            )
+            expect(address).toHaveLength(4416) // 2208 * 2 for hex string
+            expect(address).toMatch(/^[0-9a-f]+$/i)
+        })
 
-            for (let i = 0; i < 10; i++) {
-                const account = WalletCore.createAccount(wallet, i)
-                expect(account.tag.startsWith('00')).toBe(false)
-                expect(account.tag.startsWith('42')).toBe(false)
-                tags.add(account.tag)
+        it('should sync WOTS index with network', async () => {
+            // First, compute the expected WOTS address for index 0
+            const expectedAddress = (WalletCore as any).computeWOTSAddress(
+                wallet.masterSeed,
+                account,
+                0
+            )
+
+            // Set up mock response with the computed address
+            const mockResponse: TagResolveResponse = {
+                success: true,
+                unanimous: true,
+                addressConsensus: expectedAddress,
+                balanceConsensus: '1000000000',
+                quorum: []
             }
 
-            expect(tags.size).toBe(10)
+            // Mock the service method
+            jest.spyOn(MochimoService, 'resolveTag')
+                .mockResolvedValue(mockResponse)
+
+            await WalletCore.syncWOTSIndex(wallet, 0)
+
+
+            expect(account.wotsIndex).toBe(0)  // Should find match at index 0
+            expect(MochimoService.resolveTag).toHaveBeenCalledWith(account.tag)
+        })
+    })
+
+    describe('Transaction Signing', () => {
+        let wallet: ReturnType<typeof WalletCore.createMasterWallet>
+        let account: ReturnType<typeof WalletCore.createAccount>
+
+        beforeEach(() => {
+            wallet = WalletCore.createMasterWallet()
+            account = WalletCore.createAccount(wallet, 0)
+            jest.clearAllMocks()
         })
 
-        it('should generate different tags for different accounts', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const account1 = WalletCore.createAccount(wallet, 0)
-            const account2 = WalletCore.createAccount(wallet, 1)
+        it('should sign transaction and return correct format', () => {
+            // Get the expected current address
+            const expectedAddress = (WalletCore as any).computeWOTSAddress(
+                wallet.masterSeed,
+                account,
+                account.wotsIndex
+            )
 
-            expect(account1.tag).not.toBe(account2.tag)
+            const testTransaction = 'test_transaction_data'
+            const { signature, address } = WalletCore.signTransaction(
+                wallet,
+                0,
+                testTransaction
+            )
+
+            // Verify signature format
+            expect(signature).toBeDefined()
+            expect(signature).toMatch(/^[0-9a-f]+$/i) // Should be hex string
+            expect(signature.length).toBe(4288) // 2144 bytes * 2 for hex
+
+            // Verify address matches computed address
+            expect(address).toBe(expectedAddress)
         })
 
-        it('should generate consistent tags for same account', () => {
-            const wallet1 = WalletCore.createMasterWallet('test')
-            const wallet2 = WalletCore.recoverWallet(wallet1.mnemonic, 'test')
+        it('should generate different signatures for different transactions', () => {
+            const tx1 = 'transaction_1'
+            const tx2 = 'transaction_2'
 
-            const account1 = WalletCore.createAccount(wallet1, 0)
-            const account2 = WalletCore.createAccount(wallet2, 0)
+            const sig1 = WalletCore.signTransaction(wallet, 0, tx1)
+            const sig2 = WalletCore.signTransaction(wallet, 0, tx2)
 
-            expect(account1.tag).toBe(account2.tag)
+            expect(sig1.signature).not.toBe(sig2.signature)
+            expect(sig1.address).toBe(sig2.address) // Same address for same index
         })
 
-        it('should include tag in account info', () => {
-            const wallet = WalletCore.createMasterWallet()
-            const account = WalletCore.createAccount(wallet, 0)
-            const info = WalletCore.getAccountInfo(account)
+        it('should verify valid signatures', () => {
+            const message = 'test_message'
+            const { signature, address } = WalletCore.signTransaction(wallet, 0, message)
 
-            expect(info.tag).toBe(account.tag)
-            expect(info.currentAddress).toBe(account.currentWOTS.publicKey)
-            expect(info.nextAddress).toBe(account.nextWOTS.publicKey)
+            const isValid = WalletCore.verify(message, signature, address)
+            expect(isValid).toBe(true)
         })
 
-        it('should generate different tags for accounts across different wallets', () => {
-            const wallet1 = WalletCore.createMasterWallet('test1')
-            const wallet2 = WalletCore.createMasterWallet('test2')
+        it('should reject invalid signatures', () => {
+            const message = 'test_message'
+            const { signature, address } = WalletCore.signTransaction(wallet, 0, message)
 
-            // Create accounts in both wallets
-            const account1 = WalletCore.createAccount(wallet1, 0)
-            const account2 = WalletCore.createAccount(wallet2, 0)
-            const account3 = WalletCore.createAccount(wallet1, 1)
-            const account4 = WalletCore.createAccount(wallet2, 1)
+            // Try to verify with wrong message
+            const isValidWrongMessage = WalletCore.verify('wrong_message', signature, address)
+            expect(isValidWrongMessage).toBe(false)
 
-            // Collect all tags
-            const tags = new Set([
-                account1.tag,
-                account2.tag,
-                account3.tag,
-                account4.tag
-            ])
+            // Try to verify with wrong signature
+            const wrongSignature = '0'.repeat(signature.length)
+            const isValidWrongSignature = WalletCore.verify(message, wrongSignature, address)
+            expect(isValidWrongSignature).toBe(false)
+        })
 
-            // All tags should be unique
-            expect(tags.size).toBe(4)
-
-            // Verify specific pairs
-            expect(account1.tag).not.toBe(account2.tag) // Same index, different wallets
-            expect(account3.tag).not.toBe(account4.tag) // Same index, different wallets
-            expect(account1.tag).not.toBe(account3.tag) // Different index, same wallet
-            expect(account2.tag).not.toBe(account4.tag) // Different index, same wallet
+        it('should throw error for non-existent account', () => {
+            expect(() => {
+                WalletCore.signTransaction(wallet, 999, 'test_message')
+            }).toThrow('Account 999 not found')
         })
     })
 })
 
-describe('WalletCore WOTS Integration', () => {
-    describe('Key Generation and Signing', () => {
-        it('should generate valid WOTS key pairs', () => {
-            const wallet = WalletCore.createMasterWallet('test')
-            const account = WalletCore.createAccount(wallet, 0)
 
-            expect(account.currentWOTS.privateKey).toBeDefined()
-            expect(account.currentWOTS.publicKey).toBeDefined()
-            expect(account.currentWOTS.privateKey.length).toBeGreaterThan(0)
-            expect(account.currentWOTS.publicKey.length).toBeGreaterThan(0)
-        })
-
-        it('should sign and verify messages correctly', () => {
-            // Create a wallet and account with known seed for reproducibility
-            const wallet = WalletCore.createMasterWallet('test-password')
-            const account = WalletCore.createAccount(wallet, 0)
-            const message = 'test message'
-
-            // Log initial state
-            console.log('\nInitial state:')
-            console.log('Account:', {
-                privateKey: account.currentWOTS.privateKey,
-                publicKey: account.currentWOTS.publicKey
-            })
-
-            // First, test direct signing and verification
-            const directSignature = WalletCore.sign(message, account.currentWOTS.privateKey)
-            const directVerification = WalletCore.verify(
-                message, 
-                directSignature, 
-                account.currentWOTS.publicKey
-            )
-
-            console.log('\nDirect signing test:', {
-                message,
-                signature: directSignature.slice(0, 64) + '...',
-                publicKey: account.currentWOTS.publicKey.slice(0, 64) + '...',
-                verified: directVerification
-            })
-
-            expect(directVerification).toBe(true)
-
-            // Then test through transaction signing
-            const { signature, address } = WalletCore.signTransaction(wallet, 0, message)
-            
-            console.log('\nTransaction signing test:', {
-                message,
-                signature: signature.slice(0, 64) + '...',
-                address: address.slice(0, 64) + '...'
-            })
-
-            const transactionVerification = WalletCore.verify(message, signature, address)
-
-            console.log('\nVerification result:', {
-                verified: transactionVerification
-            })
-
-            expect(transactionVerification).toBe(true)
-
-            // Test that key rotation happened
-            expect(wallet.accounts[0].usedAddresses).toContain(address)
-            expect(wallet.accounts[0].currentWOTS.publicKey).not.toBe(address)
-        })
-
-        it('should fail verification with wrong message', () => {
-            const wallet = WalletCore.createMasterWallet('test')
-            const account = WalletCore.createAccount(wallet, 0)
-            const message = 'test message'
-            console.log(account)
-            const { signature, address } = WalletCore.signTransaction(
-                wallet,
-                0,
-                message
-            )
-
-            const wrongMessage = 'wrong message'
-            const isValid = WalletCore.verify(
-                wrongMessage,
-                signature,
-                address
-            )
-
-            expect(isValid).toBe(false)
-        })
-
-        it('should rotate keys after signing', () => {
-            const wallet = WalletCore.createMasterWallet('test')
-            const account = WalletCore.createAccount(wallet, 0)
-            
-            console.log('\nInitial state:')
-            console.log('Current private key:', account.currentWOTS.privateKey)
-            console.log('Current public key:', account.currentWOTS.publicKey)
-            console.log('Next private key:', account.nextWOTS.privateKey)
-            console.log('Next public key:', account.nextWOTS.publicKey)
-            console.log('Tag:', account.tag)
-
-            const originalAddress = account.currentWOTS.publicKey
-            const message = 'test message'
-            
-            const { signature, address } = WalletCore.signTransaction(wallet, 0, message)
-            
-            console.log('\nAfter signing:')
-            console.log('Original address:', originalAddress)
-            console.log('New current address:', wallet.accounts[0].currentWOTS.publicKey)
-            console.log('New next address:', wallet.accounts[0].nextWOTS.publicKey)
-            console.log('Used addresses:', wallet.accounts[0].usedAddresses)
-
-            expect(wallet.accounts[0].currentWOTS.publicKey).not.toEqual(originalAddress)
-            expect(wallet.accounts[0].usedAddresses).toContain(originalAddress)
-        })
-    })
-}) 

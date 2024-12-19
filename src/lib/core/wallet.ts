@@ -6,31 +6,93 @@ import { MochimoService } from '../services/mochimo'
 
 const TAG_LENGTH = 24 // 12 bytes = 24 hex chars
 
-export interface WOTSKeyPair {
-  privateKey: string
-  publicKey: string
-}
-
 export interface WalletAccount {
-  index: number
-  baseSeed: string
-  currentWOTS: WOTSKeyPair
-  nextWOTS: WOTSKeyPair
-  usedAddresses: string[]
-  tag: string
-  isActivated?: boolean
-  balance?: string
+  index: number          // Account index
+  tag: string           // Account tag
+  wotsIndex: number     // Current WOTS index
+  isActivated?: boolean // Activation status
 }
 
 export interface MasterWallet {
   mnemonic: string
   masterSeed: Uint8Array
   accounts: { [index: number]: WalletAccount }
-  password?: string
 }
 
 export class WalletCore {
   private static wots = new WOTS()
+
+  /**
+   * Derives account base seed from master seed and account index
+   */
+  private static deriveAccountSeed(masterSeed: Uint8Array, accountIndex: number): string {
+    const accountSeedData = new Uint8Array([
+      ...masterSeed,
+      ...new Uint8Array([accountIndex])
+    ])
+    return CryptoJS.SHA256(Buffer.from(accountSeedData).toString('hex')).toString()
+  }
+
+  /**
+   * Computes WOTS address for given account and index
+   */
+  private static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
+    const baseSeed = this.deriveAccountSeed(masterSeed, account.index)
+    const wotsSeed = CryptoJS.SHA256(baseSeed + wotsIndex.toString(16).padStart(8, '0')).toString()
+    const publicKey = this.wots.generatePKFrom(wotsSeed, account.tag)
+    return Buffer.from(publicKey).toString('hex')
+  }
+
+  /**
+   * Syncs account WOTS index with network state
+   */
+  static async syncWOTSIndex(wallet: MasterWallet, accountIndex: number): Promise<void> {
+    const account = wallet.accounts[accountIndex]
+    if (!account) throw new Error('Account not found')
+
+    // Add debug log
+    console.log('Syncing WOTS index for account:', account)
+
+    // Get current network state for tag
+    const tagResponse = await MochimoService.resolveTag(account.tag)
+    if (!tagResponse.success) throw new Error('Failed to resolve tag')
+
+    // If no address consensus, index is 0
+    if (!tagResponse.addressConsensus) {
+      account.wotsIndex = 0
+      return
+    }
+
+    // Find matching WOTS index
+    const networkAddress = tagResponse.addressConsensus
+    let found = false
+    
+    // Check recent indices first (optimization)
+    for (let i = Math.max(0, account.wotsIndex - 5); i <= account.wotsIndex + 5; i++) {
+      const computed = this.computeWOTSAddress(wallet.masterSeed, account, i)
+      if (computed === networkAddress) {
+        account.wotsIndex = i
+        found = true
+        break
+      }
+    }
+
+    // If not found in recent range, search broader
+    if (!found) {
+      for (let i = 0; i < 1000; i++) { // Reasonable upper limit
+        const computed = this.computeWOTSAddress(wallet.masterSeed, account, i)
+        if (computed === networkAddress) {
+          account.wotsIndex = i
+          found = true
+          break
+        }
+      }
+    }
+
+    if (!found) {
+      throw new Error('Could not sync WOTS index - address not found')
+    }
+  }
 
   /**
    * Creates a new master wallet
@@ -47,7 +109,6 @@ export class WalletCore {
       mnemonic,
       masterSeed: masterSeedArray,
       accounts: {},
-      password: passphrase
     }
   }
 
@@ -81,44 +142,15 @@ export class WalletCore {
     // Generate tag
     const tag = this.generateTag(baseSeed)
 
-    // Generate initial WOTS pairs using base seed and count
-    const currentKeyPair = this.generateWOTSPair(
-      CryptoJS.SHA256(baseSeed + '00000000').toString(),
-      tag
-    )
-    const nextKeyPair = this.generateWOTSPair(
-      CryptoJS.SHA256(baseSeed + '00000001').toString(),
-      tag
-    )
-
     const account: WalletAccount = {
       index: accountIndex,
-      baseSeed,
-      currentWOTS: currentKeyPair,
-      nextWOTS: nextKeyPair,
-      usedAddresses: [],
-      tag
+      tag,
+      wotsIndex: 0,
+      isActivated: false
     }
 
     wallet.accounts[accountIndex] = account
     return account
-  }
-
-  /**
-   * Generates a WOTS key pair
-   */
-  private static generateWOTSPair(seed: string, tag?: string): WOTSKeyPair {
-    console.log('Generating key pair:', { seed, tag })
-    const result = this.wots.generateKeyPairFrom(seed, tag)
-    const keyPair = {
-      privateKey: seed,
-      publicKey: Buffer.from(result).toString('hex')
-    }
-    console.log('Generated key pair:', {
-      privateKey: keyPair.privateKey,
-      publicKey: keyPair.publicKey.slice(0, 64) + '...'
-    })
-    return keyPair
   }
 
   /**
@@ -156,73 +188,27 @@ export class WalletCore {
       throw new Error(`Account ${accountIndex} not found`)
     }
 
-    // Get the current address before signing
-    const currentAddress = account.currentWOTS.publicKey
-
-    // Sign the message using the sign method
-    const signature = this.sign(transaction, account.currentWOTS.privateKey)
-    
-    // After signing, rotate the keys
-    this.rotateAccountKeys(wallet, accountIndex)
-
-    return {
-      signature,
-      address: currentAddress
-    }
-  }
-
-  /**
-   * Rotates account's WOTS keys after use
-   */
-  static rotateAccountKeys(wallet: MasterWallet, accountIndex: number): WalletAccount {
-    const account = wallet.accounts[accountIndex]
-    if (!account) {
-      throw new Error(`Account ${accountIndex} not found`)
-    }
-
-    console.log('Before rotation:', {
-      currentPrivateKey: account.currentWOTS.privateKey,
-      currentPublicKey: account.currentWOTS.publicKey,
-      nextPrivateKey: account.nextWOTS.privateKey,
-      nextPublicKey: account.nextWOTS.publicKey,
-      tag: account.tag
-    })
-
-    // Store the used address
-    account.usedAddresses.push(account.currentWOTS.publicKey)
-
-    // Generate next seed using account base seed and current count
-    const nextCount = account.usedAddresses.length + 1 // +1 because we just added one
-    const nextSeed = CryptoJS.SHA256(
-      account.baseSeed + nextCount.toString(16).padStart(8, '0')
+    // Compute current WOTS address
+    const currentWOTSSeed = CryptoJS.SHA256(
+      this.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      account.wotsIndex.toString(16).padStart(8, '0')
     ).toString()
 
-    // Generate new next key pair
-    const newNextWOTS = this.generateWOTSPair(nextSeed, account.tag)
+    // Get current address
+    const currentAddress = Buffer.from(
+      this.wots.generatePKFrom(currentWOTSSeed, account.tag)
+    ).toString('hex')
 
-    console.log('After generating new next:', {
-      nextCount,
-      nextSeed,
-      newNextPrivateKey: newNextWOTS.privateKey,
-      newNextPublicKey: newNextWOTS.publicKey
-    })
+    // Sign the transaction
+    const signature = this.wots.generateSignatureFrom(currentWOTSSeed, Buffer.from(transaction))
 
-    // Rotate keys
-    const updatedAccount: WalletAccount = {
-      ...account,
-      currentWOTS: account.nextWOTS,
-      nextWOTS: newNextWOTS
+    // Note: wotsIndex will be incremented when transaction is confirmed
+    // and new WOTS address is detected on network
+
+    return {
+      signature: Buffer.from(signature).toString('hex'),
+      address: currentAddress
     }
-
-    console.log('After rotation:', {
-      currentPrivateKey: updatedAccount.currentWOTS.privateKey,
-      currentPublicKey: updatedAccount.currentWOTS.publicKey,
-      nextPrivateKey: updatedAccount.nextWOTS.privateKey,
-      nextPublicKey: updatedAccount.nextWOTS.publicKey
-    })
-
-    wallet.accounts[accountIndex] = updatedAccount
-    return updatedAccount
   }
 
   /**
@@ -250,20 +236,12 @@ export class WalletCore {
   static getAccountInfo(account: WalletAccount): {
     index: number
     tag: string
-    currentAddress: string
-    nextAddress: string
-    usedAddresses: string[]
     isActivated: boolean | undefined
-    balance?: string
   } {
     return {
       index: account.index,
       tag: account.tag,
-      currentAddress: account.currentWOTS.publicKey,
-      nextAddress: account.nextWOTS.publicKey,
-      usedAddresses: account.usedAddresses,
-      isActivated: account.isActivated,
-      balance: account.balance
+      isActivated: account.isActivated
     }
   }
 
@@ -333,21 +311,6 @@ export class WalletCore {
   }
 
   /**
-   * Gets all addresses for an account (current, next, and used)
-   */
-  static getAccountAddresses(account: WalletAccount): {
-    current: string
-    next: string
-    used: string[]
-  } {
-    return {
-      current: account.currentWOTS.publicKey,
-      next: account.nextWOTS.publicKey,
-      used: account.usedAddresses
-    }
-  }
-
-  /**
    * Validates a tag format
    */
   static isValidTag(tag: string): boolean {
@@ -377,9 +340,9 @@ export class WalletCore {
       const response = await MochimoService.resolveTag(account.tag)
       
       // Account is activated if addressConsensus is not empty
-      const isActivated = response.success && 
+      const isActivated = Boolean(response.success && 
                          response.addressConsensus && 
-                         response.addressConsensus.length > 0
+                         response.addressConsensus.length > 0)
 
       if (isActivated) {
         console.log('Account activation details:', {
@@ -409,14 +372,29 @@ export class WalletCore {
   /**
    * Activates an account using fountains
    */
-  static async activateAccount(account: WalletAccount): Promise<boolean> {
+  static async activateAccount(wallet: MasterWallet, accountIndex: number): Promise<boolean> {
     try {
+      const account = wallet.accounts[accountIndex]
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Compute current WOTS address using master wallet seed
+      const currentWOTSSeed = CryptoJS.SHA256(
+        this.deriveAccountSeed(wallet.masterSeed, account.index) + 
+        account.wotsIndex.toString(16).padStart(8, '0')
+      ).toString()
+
+      const currentAddress = Buffer.from(
+        this.wots.generatePKFrom(currentWOTSSeed, account.tag)
+      ).toString('hex')
+
       console.log('Attempting to activate account:', {
         tag: account.tag,
-        address: account.currentWOTS.publicKey.slice(0, 64) + '...'
+        address: currentAddress.slice(0, 64) + '...'
       })
 
-      const response = await MochimoService.activateTag(account.currentWOTS.publicKey)
+      const response = await MochimoService.activateTag(currentAddress)
       
       if (response.success) {
         console.log('Account activation successful:', {
