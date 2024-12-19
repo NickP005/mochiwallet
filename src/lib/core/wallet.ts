@@ -392,15 +392,8 @@ export class WalletCore {
         throw new Error('Account not found')
       }
 
-      // Compute current WOTS address using master wallet seed
-      const currentWOTSSeed = CryptoJS.SHA256(
-        this.deriveAccountSeed(wallet.masterSeed, account.index) +
-        account.wotsIndex.toString(16).padStart(8, '0')
-      ).toString()
 
-      const currentAddress = Buffer.from(
-        this.wots.generatePKFrom(currentWOTSSeed, account.tag)
-      ).toString('hex')
+      const currentAddress = WalletCore.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
 
       console.log('Attempting to activate account:', {
         tag: account.tag,
@@ -493,8 +486,8 @@ export class WalletCore {
     const hashMessage = this.wots.sha256(new Uint8Array(messageToSign))
 
     // Get public seed and address from source WOTS
-    const pubSeed = sourceWOTS.slice(2144, 2144 + 32)
-    const pubAddr = sourceWOTS.slice(2144 + 32, 2144 + 64)
+    // const pubSeed = sourceWOTS.slice(2144, 2144 + 32)
+    // const pubAddr = sourceWOTS.slice(2144 + 32, 2144 + 64)
 
     // Generate signature
     const signature = this.wots.generateSignatureFrom(sourceSecret, hashMessage)
@@ -548,12 +541,36 @@ export class WalletCore {
 
     const account = wallet.accounts[accountIndex]
     if (!account) throw new Error('Account not found')
-
+    const sourceTagResponse = await MochimoService.resolveTag(account.tag)
+    if (!sourceTagResponse.success) {
+      throw new Error('Failed to resolve source tag')
+    } 
     // Get current WOTS key pair
     const currentWOTSSeed = CryptoJS.SHA256(
       this.deriveAccountSeed(wallet.masterSeed, account.index) +
       account.wotsIndex.toString(16).padStart(8, '0')
     ).toString()
+    const sourceWOTS = Buffer.from(this.wots.generatePKFrom(currentWOTSSeed, account.tag))
+   
+    console.log('Current WOTS pk:', sourceWOTS.toString('hex'))
+    console.log('Current WOTS pk network:', sourceTagResponse.addressConsensus)
+    
+    if(sourceWOTS.toString('hex') !== sourceTagResponse.addressConsensus) {
+      //try to debug this
+      //try different indices for wots index until it matches the network address. we will show the correct index in logs
+      for(let i = 0; i < 100; i++) {
+        const currentWOTSSeed = CryptoJS.SHA256(
+          this.deriveAccountSeed(wallet.masterSeed, account.index) +
+          i.toString(16).padStart(8, '0')
+        ).toString()
+        const sourceWOTS = Buffer.from(this.wots.generatePKFrom(currentWOTSSeed, account.tag))
+        if(sourceWOTS.toString('hex') === sourceTagResponse.addressConsensus) {
+          throw new Error(`Current WOTS pk does not match network. Index: ${i}`);
+        }
+      }
+      throw new Error('Current WOTS pk does not match network');
+
+    }
 
     // Generate next WOTS key pair for change
     const nextWOTSSeed = CryptoJS.SHA256(
@@ -562,18 +579,18 @@ export class WalletCore {
     ).toString()
 
     // Get destination address from tag
-    const tagResponse = await MochimoService.resolveTag(destinationTag)
-    if (!tagResponse.success) {
+    const destTagResponse = await MochimoService.resolveTag(destinationTag)
+    if (!destTagResponse.success) {
       throw new Error(`Failed to resolve tag:  || 'Unknown error'}`)
     }
-    if (!tagResponse.addressConsensus) {
+    if (!destTagResponse.addressConsensus) {
       throw new Error('No consensus on destination address')
     }
-    if (!tagResponse.balanceConsensus) {
+    if (!destTagResponse.balanceConsensus) {
       throw new Error('No consensus on source balance')
     }
 
-    const currentBalance = BigInt(tagResponse.balanceConsensus)
+    const currentBalance = BigInt(sourceTagResponse.balanceConsensus)
     if (currentBalance < (amount + fee)) {
       throw new Error(`Insufficient balance: have ${currentBalance}, need ${amount + fee}`)
     }
@@ -582,10 +599,10 @@ export class WalletCore {
 
     // Compute transaction
     return this.computeTransaction({
-      sourceWOTS: Buffer.from(this.wots.generatePKFrom(currentWOTSSeed, account.tag)),
+      sourceWOTS: Buffer.from(sourceWOTS),
       sourceSecret: currentWOTSSeed,
       changeWOTS: Buffer.from(this.wots.generatePKFrom(nextWOTSSeed, account.tag)),
-      destinationWOTS: Buffer.from(tagResponse.addressConsensus, 'hex'),
+      destinationWOTS: Buffer.from(destTagResponse.addressConsensus, 'hex'),
       sentAmount: amount,
       remainingAmount,
       fee

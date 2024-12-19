@@ -20,3 +20,4 @@ var manifest = {
     }
 };
 export default manifest;
+//# sourceMappingURL=manifest.js.map

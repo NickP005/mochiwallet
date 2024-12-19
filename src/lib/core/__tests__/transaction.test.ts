@@ -159,7 +159,7 @@ describe('Transaction Operations', () => {
 
       await expect(
         WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1000n)
-      ).rejects.toThrow('Failed to resolve tag')
+      ).rejects.toThrow('Failed to resolve source tag')
     })
   })
 }) 

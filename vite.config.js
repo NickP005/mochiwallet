@@ -28,6 +28,10 @@ export default defineConfig({
         outDir: 'dist',
         commonjsOptions: {
             transformMixedEsModules: true,
+        },
+        sourcemap: true,
+        watch: {
+            include: 'src/**'
         }
     },
     define: {
@@ -43,4 +47,10 @@ export default defineConfig({
         include: ['buffer', 'process/browser', 'crypto-browserify', 'stream-browserify']
     },
     publicDir: 'public',
+    server: {
+        watch: {
+            usePolling: true
+        }
+    }
 });
+//# sourceMappingURL=vite.config.js.map

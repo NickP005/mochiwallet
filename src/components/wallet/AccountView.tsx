@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { 
-  Shield, 
-  ShieldOff, 
-  RefreshCcw, 
+import {
+  Shield,
+  ShieldOff,
+  RefreshCcw,
   Loader2,
   Send,
   QrCode,
@@ -19,18 +19,33 @@ import {
   CheckCircle,
   AlertTriangle,
   Wallet,
-  Hash
+  Hash,
+  AlertCircle,
+  AlertCircleIcon,
+  X
 } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { WalletCore as WalletService, WalletAccount, MasterWallet } from '@/lib/core/wallet'
+import { WalletCore as WalletService, WalletAccount, MasterWallet, WalletCore } from '@/lib/core/wallet'
 import { MochimoService } from '@/lib/services/mochimo'
-import { SendTransaction } from './SendTransaction'
+
 import BigNumber from 'bignumber.js'
 import CryptoJS from 'crypto-js'
+import { useToast } from '@/components/ui/use-toast'
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 // Configure BigNumber
 BigNumber.config({
@@ -60,6 +75,12 @@ interface Transaction {
   address: string
 }
 
+// Define form schema
+const formSchema = z.object({
+  destinationTag: z.string().min(1, "Destination tag is required"),
+  amount: z.string().min(1, "Amount is required")
+})
+
 export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -68,6 +89,20 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   const [activating, setActivating] = useState(false)
   const [balance, setBalance] = useState<string | null>(null)
   const [showSend, setShowSend] = useState(false)
+  const [destinationTag, setDestinationTag] = useState('')
+  const [amount, setAmount] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const { toast } = useToast()
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      destinationTag: "",
+      amount: ""
+    }
+  })
 
   // Temporary transactions (we'll implement real data later)
   const tempTransactions: Transaction[] = [
@@ -92,31 +127,31 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
 
   // Format balance to show both nanoMCM and MCM
   const formatBalance = (balanceStr: string | null): { nano: string, mcm: string } => {
-    if (!balanceStr) return { 
-      nano: '0', 
-      mcm: '0.000000000' 
+    if (!balanceStr) return {
+      nano: '0',
+      mcm: '0.000000000'
     }
-    
+
     try {
       console.log('Raw balance:', balanceStr)
-      
+
       const balance = new BigNumber(balanceStr)
       const mcm = balance.dividedBy(new BigNumber('1000000000'))
-      
+
       console.log('BigNumber calc:', {
         original: balance.toString(),
         divided: mcm.toString()
       })
-      
+
       return {
         nano: balance.toString(),
         mcm: mcm.toFixed(9)
       }
     } catch (error) {
       console.error('Error formatting balance:', error)
-      return { 
-        nano: '0', 
-        mcm: '0.000000000' 
+      return {
+        nano: '0',
+        mcm: '0.000000000'
       }
     }
   }
@@ -127,12 +162,16 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
       setCheckingActivation(true)
       const response = await WalletService.checkActivationStatus(account)
       setIsActivated(response)
-      
+
       // Update balance if account is activated
       if (response) {
         const tagResponse = await MochimoService.resolveTag(account.tag)
         console.log('Tag Response:', tagResponse)
-        
+        //compare with current wots address
+        const currentWOTS = Buffer.from(WalletService.wots.generatePKFrom(WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + account.wotsIndex.toString(16).padStart(8, '0'), account.tag))
+        console.log('Current WOTS:', currentWOTS.toString('hex'))
+        console.log('Network WOTS:', tagResponse.addressConsensus)
+
         if (tagResponse.success && tagResponse.balanceConsensus) {
           // Balance is already in nanoMCM, no need to convert
           const rawBalance = tagResponse.balanceConsensus
@@ -168,7 +207,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
     try {
       setActivating(true)
       const success = await WalletService.activateAccount(wallet, account.index)
-      
+
       if (success) {
         setTimeout(async () => {
           await checkActivation()
@@ -193,14 +232,72 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
     }
   }
 
-  const handleSend = async (data: { tag: string; amount: string }) => {
-    // Implement send transaction logic here
-    console.log('Sending transaction:', data)
+  const handleSend = async (data: z.infer<typeof formSchema>) => {
+    try {
+      setIsLoading(true)
+      setError('')
+
+      // Convert amount to nanochains (1 MCM = 1e9 nMCM)
+      const amountNano = BigInt(Math.floor(parseFloat(data.amount) * 1e9))
+      
+      // Optional fee (could be added to form later)
+      const fee = 500
+
+      if (!wallet) {
+        throw new Error('Wallet not found')
+      }
+
+      // Create transaction
+      const tx = await WalletCore.createTransaction(
+        wallet,
+        account.index,
+        data.destinationTag,
+        amountNano,
+        BigInt(fee)
+      )
+
+      // Convert transaction bytes to base64
+      const txBase64 = Buffer.from(tx).toString('base64')
+
+      // Send transaction to network
+      console.log('Sending transaction to network...', txBase64)
+      // const response = await MochimoService.pushTransaction(txBase64)
+      // console.log('Push transaction response:', response)
+
+      // Clear form and close send view
+      form.reset()
+      setShowSend(false)
+      
+      // Show success message
+      toast({
+        title: 'Transaction sent!',
+        description: 'Your transaction has been broadcast to the network.',
+        variant: 'default',
+      })
+
+      // Refresh balance after short delay
+      setTimeout(() => {
+        handleRefresh()
+      }, 2000)
+
+    } catch (err: any) {
+      console.error('Send error:', err)
+      setError(err.message || 'Failed to send transaction')
+      
+      toast({
+        title: 'Transaction failed',
+        description: err.message || 'Failed to send transaction',
+        variant: 'destructive',
+      })
+
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getCurrentAddress = () => {
     const currentWOTSSeed = CryptoJS.SHA256(
-      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) +
       account.wotsIndex.toString(16).padStart(8, '0')
     ).toString()
 
@@ -211,7 +308,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
 
   const getNextAddress = () => {
     const nextWOTSSeed = CryptoJS.SHA256(
-      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) +
       (account.wotsIndex + 1).toString(16).padStart(8, '0')
     ).toString()
 
@@ -245,7 +342,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
       <div className="flex-1 overflow-auto">
         <div className="p-6 space-y-8 max-w-4xl mx-auto">
           {/* Header Card */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-gradient-to-br from-card to-card/50 rounded-xl p-6 shadow-lg border border-border/50"
@@ -258,7 +355,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                   {account.name || `Account ${account.index + 1}`}
                 </h2>
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <TagIcon className="h-4 w-4 text-muted-foreground" />
                 <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90">
@@ -337,7 +434,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
           </motion.div>
 
           {/* Action Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -371,7 +468,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
               transition={{ delay: 0.2 }}
               className="flex justify-center"
             >
-              <Button 
+              <Button
                 size="lg"
                 variant="default"
                 onClick={handleActivate}
@@ -414,11 +511,10 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                 <div key={i} className="p-4 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        tx.type === 'receive' 
-                          ? 'bg-green-500/10 text-green-500' 
-                          : 'bg-blue-500/10 text-blue-500'
-                      }`}>
+                      <div className={`p-2 rounded-full ${tx.type === 'receive'
+                        ? 'bg-green-500/10 text-green-500'
+                        : 'bg-blue-500/10 text-blue-500'
+                        }`}>
                         {tx.type === 'receive' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                       </div>
                       <div>
@@ -427,9 +523,8 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-medium ${
-                        tx.type === 'receive' ? 'text-green-500' : 'text-blue-500'
-                      }`}>
+                      <div className={`font-medium ${tx.type === 'receive' ? 'text-green-500' : 'text-blue-500'
+                        }`}>
                         {tx.type === 'receive' ? '+' : '-'}{tx.amount} MCM
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -451,8 +546,8 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
           >
             <Collapsible>
               <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full flex items-center justify-between"
                   onClick={() => setShowAdvanced(!showAdvanced)}
                 >
@@ -472,10 +567,145 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
           </motion.div>
 
           {showSend && (
-            <SendTransaction
-              onClose={() => setShowSend(false)}
-              onSend={handleSend}
-            />
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
+              <div className="fixed inset-x-4 top-[50%] z-50 translate-y-[-50%] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+                <div className="bg-background border rounded-lg shadow-lg">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <Send className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold">Send MCM</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Transfer funds to another address
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                      onClick={() => {
+                        form.reset()
+                        setShowSend(false)
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Form */}
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSend)} className="p-4 space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="destinationTag"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <TagIcon className="h-4 w-4 text-muted-foreground" />
+                              Destination Tag
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  {...field} 
+                                  placeholder="Enter destination tag" 
+                                  disabled={isLoading}
+                                  className="pr-10"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                                  onClick={() => {
+                                    // Add QR code scanner functionality here
+                                  }}
+                                >
+                                  <QrCode className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Wallet className="h-4 w-4 text-muted-foreground" />
+                              Amount
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  {...field} 
+                                  type="number"
+                                  step="0.000000001"
+                                  min="0"
+                                  placeholder="0.0"
+                                  disabled={isLoading}
+                                  className="pr-16"
+                                />
+                                <div className="absolute right-0 top-0 h-full px-3 flex items-center text-sm font-medium text-muted-foreground">
+                                  MCM
+                                </div>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                            {balance && (
+                              <p className="text-sm text-muted-foreground">
+                                Available: {formatBalance(balance).mcm} MCM
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Actions */}
+                      <div className="flex flex-col gap-2 pt-2">
+                        <Button 
+                          type="submit" 
+                          disabled={isLoading}
+                          className="w-full bg-primary hover:bg-primary/90"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sending Transaction...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Send MCM
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          disabled={isLoading}
+                          onClick={() => {
+                            form.reset()
+                            setShowSend(false)
+                          }}
+                          className="w-full"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
