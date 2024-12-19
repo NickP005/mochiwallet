@@ -11,6 +11,7 @@ export interface WalletAccount {
   tag: string           // Account tag
   wotsIndex: number     // Current WOTS index
   isActivated?: boolean // Activation status
+  name: string;
 }
 
 export interface MasterWallet {
@@ -20,12 +21,12 @@ export interface MasterWallet {
 }
 
 export class WalletCore {
-  private static wots = new WOTS()
+  public static wots = new WOTS()
 
   /**
    * Derives account base seed from master seed and account index
    */
-  private static deriveAccountSeed(masterSeed: Uint8Array, accountIndex: number): string {
+  public static deriveAccountSeed(masterSeed: Uint8Array, accountIndex: number): string {
     const accountSeedData = new Uint8Array([
       ...masterSeed,
       ...new Uint8Array([accountIndex])
@@ -36,7 +37,7 @@ export class WalletCore {
   /**
    * Computes WOTS address for given account and index
    */
-  private static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
+  public static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
     const baseSeed = this.deriveAccountSeed(masterSeed, account.index)
     const wotsSeed = CryptoJS.SHA256(baseSeed + wotsIndex.toString(16).padStart(8, '0')).toString()
     const publicKey = this.wots.generatePKFrom(wotsSeed, account.tag)
@@ -66,7 +67,7 @@ export class WalletCore {
     // Find matching WOTS index
     const networkAddress = tagResponse.addressConsensus
     let found = false
-    
+
     // Check recent indices first (optimization)
     for (let i = Math.max(0, account.wotsIndex - 5); i <= account.wotsIndex + 5; i++) {
       const computed = this.computeWOTSAddress(wallet.masterSeed, account, i)
@@ -101,8 +102,8 @@ export class WalletCore {
     const mnemonic = existingMnemonic || Mnemonic.generate()
     const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
 
-    const masterSeedArray = masterSeed instanceof Uint8Array 
-      ? masterSeed 
+    const masterSeedArray = masterSeed instanceof Uint8Array
+      ? masterSeed
       : new Uint8Array(Object.values(masterSeed))
 
     return {
@@ -146,7 +147,8 @@ export class WalletCore {
       index: accountIndex,
       tag,
       wotsIndex: 0,
-      isActivated: false
+      isActivated: false,
+      name: 'Account ' + (accountIndex + 1)
     }
 
     wallet.accounts[accountIndex] = account
@@ -190,7 +192,7 @@ export class WalletCore {
 
     // Compute current WOTS address
     const currentWOTSSeed = CryptoJS.SHA256(
-      this.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      this.deriveAccountSeed(wallet.masterSeed, account.index) +
       account.wotsIndex.toString(16).padStart(8, '0')
     ).toString()
 
@@ -216,16 +218,16 @@ export class WalletCore {
    */
   private static generateTag(baseSeed: string): string {
     let counter = 0
-    
+
     while (true) {
       const tagSeed = Buffer.from(baseSeed + counter.toString(16).padStart(16, '0')).toString('hex')
       const hash = CryptoJS.SHA256(tagSeed).toString()
       const candidate = hash.slice(0, TAG_LENGTH).toUpperCase()
-      
+
       if (!candidate.startsWith('00') && !candidate.startsWith('42')) {
         return candidate
       }
-      
+
       counter++
     }
   }
@@ -270,8 +272,8 @@ export class WalletCore {
       )
 
       // Compare only the WOTS public key part
-      return Buffer.from(reconstructedKey).toString('hex') === 
-             Buffer.from(wotsKey).toString('hex')
+      return Buffer.from(reconstructedKey).toString('hex') ===
+        Buffer.from(wotsKey).toString('hex')
     } catch (error) {
       console.error('Verification error:', error)
       return false
@@ -338,11 +340,11 @@ export class WalletCore {
   static async checkActivationStatus(account: WalletAccount): Promise<boolean> {
     try {
       const response = await MochimoService.resolveTag(account.tag)
-      
+
       // Account is activated if addressConsensus is not empty
-      const isActivated = Boolean(response.success && 
-                         response.addressConsensus && 
-                         response.addressConsensus.length > 0)
+      const isActivated = Boolean(response.success &&
+        response.addressConsensus &&
+        response.addressConsensus.length > 0)
 
       if (isActivated) {
         console.log('Account activation details:', {
@@ -350,7 +352,7 @@ export class WalletCore {
           balance: response.balanceConsensus,
           nodes: response.quorum.map(q => q.node.host)
         })
-        
+
         account.isActivated = true
       } else {
         console.log('Account not activated:', {
@@ -360,7 +362,7 @@ export class WalletCore {
         })
         account.isActivated = false
       }
-      
+
       return isActivated
     } catch (error) {
       console.error('Error checking activation status:', error)
@@ -381,7 +383,7 @@ export class WalletCore {
 
       // Compute current WOTS address using master wallet seed
       const currentWOTSSeed = CryptoJS.SHA256(
-        this.deriveAccountSeed(wallet.masterSeed, account.index) + 
+        this.deriveAccountSeed(wallet.masterSeed, account.index) +
         account.wotsIndex.toString(16).padStart(8, '0')
       ).toString()
 
@@ -395,7 +397,7 @@ export class WalletCore {
       })
 
       const response = await MochimoService.activateTag(currentAddress)
-      
+
       if (response.success) {
         console.log('Account activation successful:', {
           tag: account.tag,

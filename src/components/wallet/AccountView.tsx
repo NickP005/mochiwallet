@@ -26,10 +26,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { WalletCore as WalletService, WalletAccount } from '@/lib/core/wallet'
+import { WalletCore as WalletService, WalletAccount, MasterWallet } from '@/lib/core/wallet'
 import { MochimoService } from '@/lib/services/mochimo'
 import { SendTransaction } from './SendTransaction'
 import BigNumber from 'bignumber.js'
+import CryptoJS from 'crypto-js'
 
 // Configure BigNumber
 BigNumber.config({
@@ -46,6 +47,7 @@ BigNumber.config({
 })
 
 interface AccountViewProps {
+  wallet: MasterWallet
   account: WalletAccount
   onUpdate: (updated: WalletAccount) => void
 }
@@ -58,7 +60,7 @@ interface Transaction {
   address: string
 }
 
-export function AccountView({ account, onUpdate }: AccountViewProps) {
+export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [isActivated, setIsActivated] = useState<boolean | null>(null)
@@ -165,10 +167,9 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const handleActivate = async () => {
     try {
       setActivating(true)
-      const success = await WalletService.activateAccount(account)
+      const success = await WalletService.activateAccount(wallet, account.index)
       
       if (success) {
-        // Check activation status after a short delay to allow for network propagation
         setTimeout(async () => {
           await checkActivation()
           setActivating(false)
@@ -196,6 +197,47 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     // Implement send transaction logic here
     console.log('Sending transaction:', data)
   }
+
+  const getCurrentAddress = () => {
+    const currentWOTSSeed = CryptoJS.SHA256(
+      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      account.wotsIndex.toString(16).padStart(8, '0')
+    ).toString()
+
+    return Buffer.from(
+      WalletService.wots.generatePKFrom(currentWOTSSeed, account.tag)
+    ).toString('hex')
+  }
+
+  const getNextAddress = () => {
+    const nextWOTSSeed = CryptoJS.SHA256(
+      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + 
+      (account.wotsIndex + 1).toString(16).padStart(8, '0')
+    ).toString()
+
+    return Buffer.from(
+      WalletService.wots.generatePKFrom(nextWOTSSeed, account.tag)
+    ).toString('hex')
+  }
+
+  const advancedSection = (
+    <CollapsibleContent className="space-y-4 pt-4">
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Current Address (Index: {account.wotsIndex})</label>
+          <code className="block text-xs bg-muted p-2 rounded break-all">
+            {getCurrentAddress()}
+          </code>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Next Address (Index: {account.wotsIndex + 1})</label>
+          <code className="block text-xs bg-muted p-2 rounded break-all">
+            {getNextAddress()}
+          </code>
+        </div>
+      </div>
+    </CollapsibleContent>
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -425,22 +467,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   )}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
-                <div className="rounded-lg border p-4 space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Current Address</label>
-                    <code className="block text-xs bg-muted p-2 rounded break-all">
-                      {account.currentWOTS.publicKey}
-                    </code>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Next Address</label>
-                    <code className="block text-xs bg-muted p-2 rounded break-all">
-                      {account.nextWOTS.publicKey}
-                    </code>
-                  </div>
-                </div>
-              </CollapsibleContent>
+              {showAdvanced && advancedSection}
             </Collapsible>
           </motion.div>
 

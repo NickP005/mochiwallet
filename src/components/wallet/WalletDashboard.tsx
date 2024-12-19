@@ -92,6 +92,7 @@ export function WalletDashboard({
       <main className="flex-1 h-full overflow-auto">
         {selectedAccount !== null && accounts[selectedAccount] ? (
           <AccountView 
+            wallet={wallet}
             account={accounts[selectedAccount]}
             onUpdate={(updated) => {
               setAccounts(prev => ({

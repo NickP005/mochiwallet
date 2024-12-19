@@ -6,11 +6,10 @@ import { Logo } from '@/components/ui/logo'
 import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import * as wots from "@/lib/core/wots"
-import { WalletService } from '@/lib/services/wallet'
+import { WalletCore, MasterWallet } from '@/lib/core/wallet'
 
 interface UnlockWalletProps {
-  onUnlock: (wallet: any, password: string) => void
+  onUnlock: (wallet: MasterWallet, password: string) => void
 }
 
 export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
@@ -20,14 +19,33 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
 
   const handleUnlock = async () => {
     try {
-      setError(null)
       setLoading(true)
-      console.log('Attempting to unlock wallet...')
-      const wallet = await SecureStorage.loadWallet(password)
-      console.log('Wallet unlocked successfully')
-      onUnlock(wallet, password)
+      setError(null)
+
+      // Check if wallet exists
+      const hasWallet = await SecureStorage.hasWallet()
+      if (!hasWallet) {
+        throw new Error('No wallet found')
+      }
+
+      // Try to load wallet with provided password
+      try {
+        const decryptedWallet = await SecureStorage.loadWallet(password)
+
+        // Create proper MasterWallet instance with the same password
+        const wallet = WalletCore.createMasterWallet(password, decryptedWallet.mnemonic)
+        
+        // Copy over accounts and other properties
+        wallet.accounts = decryptedWallet.accounts
+
+        // Call onUnlock with the wallet and password
+        onUnlock(wallet, password)
+      } catch (error) {
+        console.error('Decryption error:', error)
+        throw new Error('Invalid password')
+      }
     } catch (error) {
-      console.error('Error unlocking wallet:', error)
+      console.error('Unlock error:', error)
       setError(error instanceof Error ? error.message : 'Failed to unlock wallet')
     } finally {
       setLoading(false)
