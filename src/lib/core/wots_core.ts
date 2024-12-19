@@ -45,21 +45,12 @@ export class WOTS {
   }
 
   public generatePKFrom(wots_seed: string, tag?: string): Uint8Array {
-    // if (!wots_seed) {
-    //   throw new Error('Seed is required')
-    // }
-
-    // Add tag validation
+    // Validate tag format if provided
     if (tag !== undefined) {
-      if (tag.length !== 24) {
-        // Use default tag for invalid length
-        tag = undefined
-      } else {
-        // Check if tag contains only valid hex characters (0-9, A-F)
-        const validHex = /^[0-9A-F]{24}$/i
-        if (!validHex.test(tag)) {
-          throw new Error('Invalid tag format')
-        }
+      // Tag must be 24 characters long and contain only hex characters (0-9, A-F)
+      const validHex = /^[0-9A-F]{24}$/i
+      if (!validHex.test(tag)) {
+        throw new Error('Invalid tag format')
       }
     }
 
@@ -84,7 +75,7 @@ export class WOTS {
     offset += 20
     
     // Add tag
-    const tagBytes = !tag || tag.length !== 24 
+    const tagBytes = !tag 
       ? new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
       : this.hexToBytes(tag)
     result.set(tagBytes, offset)
@@ -101,12 +92,20 @@ export class WOTS {
     return this.wots_sign(to_sign, private_seed, public_seed, addr_seed)
   }
 
-  private sha256(input: string | Uint8Array): Uint8Array {
+  public sha256(input: string | Uint8Array): Uint8Array {
     if (typeof input === 'string') {
       const hash = CryptoJS.SHA256(input)
       return new Uint8Array(this.hexToBytes(hash.toString()))
     } else {
-      const hash = CryptoJS.SHA256(this.bytesToHex(input))
+      // Convert to ASCII string for consistent hashing
+      const asciiStr = Array.from(input)
+        .map(byte => String.fromCharCode(byte))
+        .join('')
+      
+      // Hash using CryptoJS
+      const hash = CryptoJS.SHA256(asciiStr)
+      
+      // Convert to byte array
       return new Uint8Array(this.hexToBytes(hash.toString()))
     }
   }

@@ -257,7 +257,7 @@ export class SecureStorage {
         ...wallet,
         password // Include password in the encrypted data
       }
-      
+
       console.log('Saving wallet with data:', {
         hasMnemonic: !!walletWithPassword.mnemonic,
         hasMasterSeed: !!walletWithPassword.masterSeed,
@@ -266,7 +266,7 @@ export class SecureStorage {
 
       const encrypted = await this.encrypt(walletWithPassword, password)
       await browser.storage.local.set({ encryptedWallet: encrypted })
-      
+
       console.log('Wallet saved successfully')
     } catch (error) {
       console.error('Error saving wallet:', error)
@@ -280,8 +280,8 @@ export class SecureStorage {
   static async loadWallet(password: string): Promise<any> {
     try {
       console.log('Loading wallet...')
-      const { encryptedWallet } = await browser.storage.local.get('encryptedWallet')
-      
+      const { encryptedWallet } = await browser.storage.local.get('encryptedWallet') as { encryptedWallet: EncryptedData }
+
       if (!encryptedWallet) {
         console.log('No wallet found in storage')
         throw new Error('No wallet found')
@@ -289,7 +289,7 @@ export class SecureStorage {
 
       console.log('Decrypting wallet data...')
       const decrypted = await this.decrypt(encryptedWallet, password)
-      
+
       console.log('Wallet loaded:', {
         hasMnemonic: !!decrypted.mnemonic,
         hasMasterSeed: !!decrypted.masterSeed,

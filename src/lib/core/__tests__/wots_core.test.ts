@@ -22,7 +22,7 @@ describe('WOTS Core Implementation', () => {
     it('should generate key pair from seed', () => {
       const seed = 'test_seed_123'
       const result = wots.generatePKFrom(seed)
-      
+
       expect(result).toBeInstanceOf(Uint8Array)
       expect(result.length).toBe(2144 + 32 + 20 + 12) // public key + pub_seed + addr_seed + tag
     })
@@ -30,7 +30,7 @@ describe('WOTS Core Implementation', () => {
     it('should generate different keys for different seeds', () => {
       const key1 = wots.generatePKFrom('seed1')
       const key2 = wots.generatePKFrom('seed2')
-      
+
       expect(Buffer.from(key1).toString('hex'))
         .not.toBe(Buffer.from(key2).toString('hex'))
     })
@@ -38,7 +38,7 @@ describe('WOTS Core Implementation', () => {
     it('should generate consistent keys for same seed', () => {
       const key1 = wots.generatePKFrom('same_seed')
       const key2 = wots.generatePKFrom('same_seed')
-      
+
       expect(Buffer.from(key1).toString('hex'))
         .toBe(Buffer.from(key2).toString('hex'))
     })
@@ -47,21 +47,10 @@ describe('WOTS Core Implementation', () => {
       const seed = 'test_seed'
       const tag = '123456789012345678901234' // 24 chars
       const result = wots.generatePKFrom(seed, tag)
-      
+
       // Extract tag from result (last 12 bytes)
       const resultTag = Buffer.from(result.slice(-12)).toString('hex')
       expect(resultTag).toBe(tag.toLowerCase())
-    })
-
-    it('should use default tag when tag is invalid', () => {
-      const seed = 'test_seed'
-      const invalidTag = '123' // too short
-      const result = wots.generatePKFrom(seed, invalidTag)
-      
-      // Default tag should be [66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0]
-      const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
-      const resultTag = result.slice(-12)
-      expect(Array.from(resultTag)).toEqual(Array.from(defaultTag))
     })
   })
 
@@ -69,18 +58,18 @@ describe('WOTS Core Implementation', () => {
     it('should generate and verify signature', () => {
       const seed = 'test_signature_seed'
       const message = new TextEncoder().encode('test message')
-      
+
       // Generate key pair
       const keyPair = wots.generatePKFrom(seed)
-      
+
       // Generate signature
       const signature = wots.generateSignatureFrom(seed, message)
-      
+
       // Extract public key components
       const pubKey = keyPair.slice(0, 2144)
       const pubSeed = keyPair.slice(2144, 2144 + 32)
       const addrSeed = keyPair.slice(2144 + 32, 2144 + 32 + 20)
-      
+
       // Verify signature (using private method)
       const reconstructedKey = (wots as any).wots_publickey_from_sig(
         signature,
@@ -88,7 +77,7 @@ describe('WOTS Core Implementation', () => {
         pubSeed,
         addrSeed
       )
-      
+
       expect(Buffer.from(reconstructedKey).toString('hex'))
         .toBe(Buffer.from(pubKey).toString('hex'))
     })
@@ -97,18 +86,18 @@ describe('WOTS Core Implementation', () => {
       const seed = 'test_signature_seed'
       const message = new TextEncoder().encode('original message')
       const wrongMessage = new TextEncoder().encode('wrong message')
-      
+
       // Generate key pair
       const keyPair = wots.generatePKFrom(seed)
-      
+
       // Generate signature
       const signature = wots.generateSignatureFrom(seed, message)
-      
+
       // Extract public key components
       const pubKey = keyPair.slice(0, 2144)
       const pubSeed = keyPair.slice(2144, 2144 + 32)
       const addrSeed = keyPair.slice(2144 + 32, 2144 + 32 + 20)
-      
+
       // Verify with wrong message
       const reconstructedKey = (wots as any).wots_publickey_from_sig(
         signature,
@@ -116,7 +105,7 @@ describe('WOTS Core Implementation', () => {
         pubSeed,
         addrSeed
       )
-      
+
       expect(Buffer.from(reconstructedKey).toString('hex'))
         .not.toBe(Buffer.from(pubKey).toString('hex'))
     })
@@ -126,7 +115,7 @@ describe('WOTS Core Implementation', () => {
     it('should generate correct chain lengths', () => {
       const message = new Uint8Array([1, 2, 3, 4])
       const lengths = (wots as any).chain_lengths(message)
-      
+
       expect(lengths).toBeInstanceOf(Uint8Array)
       expect(lengths.length).toBe((wots as any).WOTSLEN)
     })
@@ -134,10 +123,10 @@ describe('WOTS Core Implementation', () => {
     it('should generate different chains for different messages', () => {
       const msg1 = new Uint8Array([1, 2, 3, 4])
       const msg2 = new Uint8Array([5, 6, 7, 8])
-      
+
       const lengths1 = (wots as any).chain_lengths(msg1)
       const lengths2 = (wots as any).chain_lengths(msg2)
-      
+
       expect(Buffer.from(lengths1).toString('hex'))
         .not.toBe(Buffer.from(lengths2).toString('hex'))
     })
@@ -149,7 +138,7 @@ describe('WOTS Core Implementation', () => {
         const input = new Uint8Array([255, 255]) // max values
         const outlen = 4
         const result = (wots as any).base_w(outlen, input)
-        
+
         expect(result).toBeInstanceOf(Uint8Array)
         expect(result.length).toBe(outlen)
         expect(Math.max(...result)).toBeLessThan((wots as any).WOTSW)
@@ -160,7 +149,7 @@ describe('WOTS Core Implementation', () => {
       it('should calculate valid checksum', () => {
         const msg = new Uint8Array(Array(67).fill(1)) // test message
         const checksum = (wots as any).wots_checksum(msg)
-        
+
         expect(checksum).toBeInstanceOf(Uint8Array)
         expect(checksum.length).toBe((wots as any).WOTSLEN2)
       })
@@ -178,7 +167,7 @@ describe('WOTS Core Implementation', () => {
         const arr1 = new Uint8Array([1, 2, 3])
         const arr2 = new Uint8Array([4, 5, 6])
         const result = (wots as any).concatUint8Arrays(arr1, arr2)
-        
+
         expect(result).toBeInstanceOf(Uint8Array)
         expect(result.length).toBe(arr1.length + arr2.length)
         expect(Array.from(result)).toEqual([1, 2, 3, 4, 5, 6])
@@ -229,16 +218,12 @@ describe('WOTS Core Implementation', () => {
 
       it('should handle tag with exactly 23 characters (invalid length)', () => {
         const tag = '12345678901234567890123' // 23 chars
-        const result = wots.generatePKFrom('seed', tag)
-        const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
-        expect(Array.from(result.slice(-12))).toEqual(Array.from(defaultTag))
+        expect(() => wots.generatePKFrom('seed', tag)).toThrow('Invalid tag format')
       })
 
       it('should handle tag with exactly 25 characters (invalid length)', () => {
         const tag = '1234567890123456789012345' // 25 chars
-        const result = wots.generatePKFrom('seed', tag)
-        const defaultTag = new Uint8Array([66, 0, 0, 0, 14, 0, 0, 0, 1, 0, 0, 0])
-        expect(Array.from(result.slice(-12))).toEqual(Array.from(defaultTag))
+        expect(() => wots.generatePKFrom('seed', tag)).toThrow('Invalid tag format')
       })
     })
 
