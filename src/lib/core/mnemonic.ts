@@ -27,11 +27,18 @@ export class Mnemonic {
   static toSeed(mnemonic: string, passphrase: string = ''): Uint8Array {
     const salt = 'mochimo' + passphrase
     const key = CryptoJS.PBKDF2(mnemonic, salt, {
-      keySize: 512/32, // 512 bits
+      keySize: 256/32, // Changed to 256 bits (32 bytes)
       iterations: 2048,
       hasher: CryptoJS.algo.SHA512
     })
-    return new Uint8Array(Buffer.from(key.toString(), 'hex'))
+    const seedHex = key.toString()
+    
+    // Ensure we have exactly 32 bytes
+    if (seedHex.length !== 64) {
+      throw new Error('Generated seed is not 32 bytes')
+    }
+    
+    return new Uint8Array(Buffer.from(seedHex, 'hex'))
   }
 
   /**

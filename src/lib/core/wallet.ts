@@ -1,18 +1,17 @@
-import CryptoJS from 'crypto-js'
 import { Buffer } from 'buffer'
 import { Mnemonic } from './mnemonic'
-import { WOTS } from './wots_core'
+import { HDWallet } from '../mochicore/hdwallet'
 import { MochimoService } from '../services/mochimo'
+import { Transaction } from '../mochicore/transaction'
 
-const TAG_LENGTH = 24 // 12 bytes = 24 hex chars
-const SIGNATURE_SIZE = 2144  // Changed from 2208 to match WOTS.TXSIGLEN
+
 
 export interface WalletAccount {
   index: number          // Account index
   tag: string           // Account tag
   wotsIndex: number     // Current WOTS index
   isActivated?: boolean // Activation status
-  name: string;
+  name: string
 }
 
 export interface MasterWallet {
@@ -21,125 +20,21 @@ export interface MasterWallet {
   accounts: { [index: number]: WalletAccount }
 }
 
-interface TransactionParams {
-  sourceWOTS: Uint8Array
-  sourceSecret: string
-  changeWOTS: Uint8Array
-  destinationWOTS: Uint8Array
-  sentAmount: number
-  remainingAmount: number
-  fee: number
-}
-
 export class WalletCore {
-  public static wots = new WOTS()
-
-  /**
-   * Derives account base seed from master seed and account index
-   */
-  public static deriveAccountSeed(masterSeed: Uint8Array, accountIndex: number): string {
-    const accountSeedData = new Uint8Array([
-      ...masterSeed,
-      ...new Uint8Array([accountIndex])
-    ])
-    return CryptoJS.SHA256(Buffer.from(accountSeedData).toString('hex')).toString()
-  }
-
-  /**
-   * Derives WOTS seed from master seed, account index, and WOTS index
-   */
-  public static deriveWotsSeed(masterSeed: Uint8Array, accountIndex: number, wotsIndex: number): string {
-    const baseSeed = this.deriveAccountSeed(masterSeed, accountIndex)
-    return CryptoJS.SHA256(baseSeed + wotsIndex.toString(16).padStart(8, '0')).toString()
-  }
-
-  /**
-   * Computes WOTS address for given account and index
-   */
-  public static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
-    const wotsSeed = this.deriveWotsSeed(masterSeed, account.index, wotsIndex)
-    const publicKey = this.wots.generatePKFrom(wotsSeed, account.tag)
-    console.log('publicKey:', publicKey.byteLength)
-    return Buffer.from(publicKey).toString('hex')
-  }
-
-  /**
-   * Syncs account WOTS index with network state
-   */
-  static async syncWOTSIndex(wallet: MasterWallet, accountIndex: number): Promise<void> {
-    const account = wallet.accounts[accountIndex]
-    if (!account) throw new Error('Account not found')
-
-    // Add debug log
-    console.log('Syncing WOTS index for account:', account)
-
-    // Get current network state for tag
-    const tagResponse = await MochimoService.resolveTag(account.tag)
-    if (!tagResponse.success) throw new Error('Failed to resolve tag')
-
-    // If no address consensus, index is 0
-    if (!tagResponse.addressConsensus) {
-      account.wotsIndex = 0
-      return
-    }
-
-    // Find matching WOTS index
-    const networkAddress = tagResponse.addressConsensus
-    let found = false
-
-    // Check recent indices first (optimization)
-    for (let i = Math.max(0, account.wotsIndex - 5); i <= account.wotsIndex + 5; i++) {
-      const computed = this.computeWOTSAddress(wallet.masterSeed, account, i)
-      if (computed === networkAddress) {
-        account.wotsIndex = i
-        found = true
-        break
-      }
-    }
-
-    // If not found in recent range, search broader
-    if (!found) {
-      for (let i = 0; i < 1000; i++) { // Reasonable upper limit
-        const computed = this.computeWOTSAddress(wallet.masterSeed, account, i)
-        if (computed === networkAddress) {
-          account.wotsIndex = i
-          found = true
-          break
-        }
-      }
-    }
-
-    if (!found) {
-      throw new Error('Could not sync WOTS index - address not found')
-    }
-  }
-
   /**
    * Creates a new master wallet
    */
-  static createMasterWallet(passphrase: string = '', existingMnemonic?: string): MasterWallet {
-    const mnemonic = existingMnemonic || Mnemonic.generate()
-    const masterSeed = Mnemonic.toSeed(mnemonic, passphrase)
-
-    const masterSeedArray = masterSeed instanceof Uint8Array
-      ? masterSeed
-      : new Uint8Array(Object.values(masterSeed))
+  static createMasterWallet(password: string, mnemonic?: string): MasterWallet {
+    if (!mnemonic) {
+      mnemonic = Mnemonic.generate()
+    }
+    const masterSeed = Mnemonic.toSeed(mnemonic, password)
 
     return {
       mnemonic,
-      masterSeed: masterSeedArray,
-      accounts: {},
+      masterSeed,
+      accounts: {}
     }
-  }
-
-  /**
-   * Recovers a master wallet from mnemonic
-   */
-  static recoverWallet(mnemonic: string, passphrase: string = ''): MasterWallet {
-    if (!Mnemonic.validate(mnemonic)) {
-      throw new Error('Invalid mnemonic')
-    }
-    return this.createMasterWallet(passphrase, mnemonic)
   }
 
   /**
@@ -149,201 +44,80 @@ export class WalletCore {
     if (wallet.accounts[accountIndex]) {
       throw new Error(`Account ${accountIndex} already exists`)
     }
-    console.log('Creating account:', accountIndex, wallet.masterSeed)
 
-    // Generate account base seed
-    const accountSeedData = this.deriveAccountSeed(wallet.masterSeed, accountIndex)
-    const baseSeed = CryptoJS.SHA256(
-      Buffer.from(accountSeedData).toString('hex')
-    ).toString()
-
-    // Generate tag
-    const tag = this.generateTag(baseSeed)
-
-    const account: WalletAccount = {
+    // Create HDWallet instance
+    const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
+    
+    // Create account using HDWallet
+    const account = hdwallet.createAccount(accountIndex)
+    
+    // Convert to our WalletAccount format
+    const walletAccount: WalletAccount = {
       index: accountIndex,
-      tag,
-      wotsIndex: 0,
+      tag: account.getTag(),
+      wotsIndex: account.getCurrentIndex(),
       isActivated: false,
       name: 'Account ' + (accountIndex + 1)
     }
 
-    wallet.accounts[accountIndex] = account
-    return account
+    wallet.accounts[accountIndex] = walletAccount
+    return walletAccount
   }
 
   /**
-   * Signs a message with a private key
+   * Creates and signs a transaction
    */
-  static sign(message: string, privateKey: string): string {
-    try {
-      // Convert message to Uint8Array
-      const messageBytes = Buffer.from(message)
-
-      // Sign using WOTS core
-      const signature = this.wots.generateSignatureFrom(
-        privateKey,
-        messageBytes
-      )
-
-      // Convert signature to hex string
-      return Buffer.from(signature).toString('hex')
-    } catch (error) {
-      console.error('Signing error:', error)
-      throw new Error('Failed to sign message')
-    }
-  }
-
-  /**
-   * Signs a transaction with the current WOTS key
-   */
-  static signTransaction(
+  static async createTransaction(
     wallet: MasterWallet,
     accountIndex: number,
-    transaction: string
-  ): { signature: string; address: string } {
+    destinationTag: string,
+    amount: bigint,
+    fee: bigint = 1000n
+  ): Promise<Uint8Array> {
+    // Validate inputs
+    if (amount <= 0n) throw new Error('Amount must be positive')
+    if (fee < 0n) throw new Error('Fee cannot be negative')
+
     const account = wallet.accounts[accountIndex]
-    if (!account) {
-      throw new Error(`Account ${accountIndex} not found`)
+    if (!account) throw new Error('Account not found')
+
+    // Create HDWallet instance
+    const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
+    const hdAccount = hdwallet.getAccount(accountIndex)
+
+    // Get source address info
+    const sourceTagResponse = await MochimoService.resolveTag(account.tag)
+    if (!sourceTagResponse.success || !sourceTagResponse.addressConsensus) {
+      throw new Error('Failed to resolve source tag')
     }
 
-    // Compute current WOTS address
-    const currentWOTSSeed = this.deriveWotsSeed(wallet.masterSeed, account.index, account.wotsIndex)
-
-    // Get current address
-    const currentAddress = this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
-
-    // Sign the transaction
-    const signature = this.wots.generateSignatureFrom(currentWOTSSeed, Buffer.from(transaction))
-
-    // Note: wotsIndex will be incremented when transaction is confirmed
-    // and new WOTS address is detected on network
-
-    return {
-      signature: Buffer.from(signature).toString('hex'),
-      address: currentAddress
-    }
-  }
-
-  /**
-   * Generates a deterministic tag for an account
-   */
-  private static generateTag(baseSeed: string): string {
-    let counter = 0
-
-    while (true) {
-      const tagSeed = Buffer.from(baseSeed + counter.toString(16).padStart(16, '0')).toString('hex')
-      const hash = CryptoJS.SHA256(tagSeed).toString()
-      const candidate = hash.slice(0, TAG_LENGTH).toUpperCase()
-
-      if (!candidate.startsWith('00') && !candidate.startsWith('42')) {
-        return candidate
-      }
-
-      counter++
-    }
-  }
-
-  /**
-   * Gets account info including tag and balance
-   */
-  static getAccountInfo(account: WalletAccount): {
-    index: number
-    tag: string
-    isActivated: boolean | undefined
-  } {
-    return {
-      index: account.index,
-      tag: account.tag,
-      isActivated: account.isActivated
-    }
-  }
-
-  /**
-   * Verifies a signature
-   */
-  static verify(message: string, signature: string, publicKey: string): boolean {
-    try {
-      // Convert hex strings to Uint8Arrays
-      const signatureBytes = Buffer.from(signature, 'hex')
-      const messageBytes = Buffer.from(message)
-      const publicKeyBytes = Buffer.from(publicKey, 'hex')
-
-      // Extract components from public key
-      // Format: [WOTS public key (2144 bytes) | pub_seed (32 bytes) | addr_seed (20 bytes) | tag (12 bytes)]
-      const wotsKey = publicKeyBytes.slice(0, 2144)
-      const pubSeed = publicKeyBytes.slice(2144, 2144 + 32)
-      const addrSeed = publicKeyBytes.slice(2144 + 32, 2144 + 32 + 20)
-
-      // Use WOTS core to verify
-      const reconstructedKey = this.wots.verifySignature(
-        signatureBytes,
-        messageBytes,
-        pubSeed,
-        addrSeed
-      )
-
-      // Compare only the WOTS public key part
-      return Buffer.from(reconstructedKey).toString('hex') ===
-        Buffer.from(wotsKey).toString('hex')
-    } catch (error) {
-      console.error('Verification error:', error)
-      return false
-    }
-  }
-
-  /**
-   * Validates an address
-   */
-  static isValidAddress(address: string): boolean {
-    try {
-      // Check length
-      if (!address || address.length !== 2144 + 32 + 20 + 12) {
-        return false
-      }
-
-      // Check if it's valid hex
-      if (!/^[0-9a-fA-F]+$/.test(address)) {
-        return false
-      }
-
-      // Extract components
-      const publicKeyBytes = Buffer.from(address, 'hex')
-      const tag = publicKeyBytes.slice(-12)
-
-      // Validate tag format
-      const tagHex = Buffer.from(tag).toString('hex').toUpperCase()
-      if (tagHex.startsWith('00') || tagHex.startsWith('42')) {
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Address validation error:', error)
-      return false
-    }
-  }
-
-  /**
-   * Validates a tag format
-   */
-  static isValidTag(tag: string): boolean {
-    if (!tag || tag.length !== 24) {
-      return false
+    // Get destination address info
+    const destTagResponse = await MochimoService.resolveTag(destinationTag)
+    if (!destTagResponse.success || !destTagResponse.addressConsensus) {
+      throw new Error('Failed to resolve destination tag')
     }
 
-    // Must be hex and uppercase
-    const validHex = /^[0-9A-F]{24}$/
-    if (!validHex.test(tag)) {
-      return false
+    const currentBalance = BigInt(sourceTagResponse.balanceConsensus || '0')
+    if (currentBalance < (amount + fee)) {
+      throw new Error(`Insufficient balance: have ${currentBalance}, need ${amount + fee}`)
     }
 
-    // Must not start with 00 or 42
-    if (tag.startsWith('00') || tag.startsWith('42')) {
-      return false
-    }
+    const changeAmount = currentBalance - amount - fee
 
-    return true
+    // Get addresses and secret
+    const sourceWOTS = hdAccount.getWotsAddress(account.wotsIndex)
+    const changeWOTS = hdAccount.getWotsAddress(account.wotsIndex + 1)
+    const destinationWOTS = Buffer.from(destTagResponse.addressConsensus, 'hex')
+    return Transaction.sign({
+      balance: currentBalance,
+      payment: amount,
+      fee: fee,
+      changeAmount: changeAmount,
+      source: sourceWOTS,
+      wotsSeed: hdAccount.generateWotsSeed(account.wotsIndex),
+      destination: destinationWOTS,
+      change: changeWOTS
+    })
   }
 
   /**
@@ -352,56 +126,31 @@ export class WalletCore {
   static async checkActivationStatus(account: WalletAccount): Promise<boolean> {
     try {
       const response = await MochimoService.resolveTag(account.tag)
-
-      // Account is activated if addressConsensus is not empty
-      const isActivated = Boolean(response.success &&
-        response.addressConsensus &&
-        response.addressConsensus.length > 0)
-
-      if (isActivated) {
-        console.log('Account activation details:', {
-          address: response.addressConsensus,
-          balance: response.balanceConsensus,
-          nodes: response.quorum.map(q => q.node.host)
-        })
-
-        account.isActivated = true
-      } else {
-        console.log('Account not activated:', {
-          tag: account.tag,
-          success: response.success,
-          unanimous: response.unanimous,
-        })
-        account.isActivated = false
-      }
-
-      return isActivated
+      account.isActivated = Boolean(response.success && response.addressConsensus)
+      return account.isActivated
     } catch (error) {
       console.error('Error checking activation status:', error)
       account.isActivated = false
       return false
     }
   }
-
-  /**
-   * Activates an account using fountains
-   */
   static async activateAccount(wallet: MasterWallet, accountIndex: number): Promise<boolean> {
     try {
       const account = wallet.accounts[accountIndex]
       if (!account) {
         throw new Error('Account not found')
       }
+      const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
+      const hdAccount = hdwallet.getAccount(accountIndex)
 
-
-      const currentAddress = WalletCore.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
+      const currentAddress = hdAccount.getWotsAddress(account.wotsIndex)
 
       console.log('Attempting to activate account:', {
         tag: account.tag,
         address: currentAddress.slice(0, 64) + '...'
       })
 
-      const response = await MochimoService.activateTag(currentAddress)
+      const response = await MochimoService.activateTag(Buffer.from(currentAddress).toString('hex'))
 
       if (response.success) {
         console.log('Account activation successful:', {
@@ -422,222 +171,9 @@ export class WalletCore {
       return false
     }
   }
-
-  /**
-   * Computes a transaction with the given parameters
-   */
-  static computeTransaction({
-    sourceWOTS,
-    sourceSecret,
-    changeWOTS,
-    destinationWOTS,
-    sentAmount,
-    remainingAmount,
-    fee
-  }: TransactionParams): Uint8Array {
-    // Validate WOTS lengths
-    if (sourceWOTS.byteLength !== 2208 || changeWOTS.byteLength !== 2208 || destinationWOTS.byteLength !== 2208) {
-      throw new Error('Invalid WOTS length')
-    }
-    function from_int_to_byte_array(long: number): number[] {
-      const byteArray = [0, 0, 0, 0, 0, 0, 0, 0]
-      for (let index = 0; index < byteArray.length; index++) {
-        const byte = long & 0xff
-        byteArray[index] = byte
-        long = (long - byte) / 256
-      }
-      return byteArray
-    }
-    function byte_copy(source: number[], num_bytes: number): number[] {
-      const output: number[] = []
-      for (let i = 0; i < num_bytes; i++) {
-        output.push(source[i] === undefined ? 0 : source[i])
-      }
-      return output
-    }
-    Array.prototype.pushArray = function(arr) {
-      this.push.apply(this, arr);
-    };
-    if (typeof Array.prototype.toASCII !== 'function') {
-      Array.prototype.toASCII = function(this: number[]): string {
-        return this.map(byte => String.fromCharCode(byte)).join('')
-      }
-    }
-
-    // Helper to generate zeros
-    const generateZeros = (count: number): number[] => new Array(count).fill(0).map(Number)
-
-    // Create message array
-    let message: number[] = []
-
-    // Network header (2 bytes of zeros)
-    message.pushArray(generateZeros(2)); //things of network etc
-
-    // Protocol version
-    message.push(57, 5)
-
-    // Network stuff (4 bytes of zeros)
-    message.pushArray(generateZeros(4))
-
-    // Transaction type (3 as 2 bytes)
-    message.push(0, 3)
-
-    // Block fields (16 bytes of zeros)
-    message.pushArray(generateZeros(16))
-
-    // Block hashes and weight (32*3 bytes of zeros)
-    message.pushArray(generateZeros(32 * 3))
-
-    // Length fields (2 bytes of zeros)
-    message.pushArray(generateZeros(2))
-
-    // WOTS addresses
-    message.pushArray(Array.from(sourceWOTS))
-    message.pushArray(Array.from(destinationWOTS))
-    message.pushArray(Array.from(changeWOTS))
-
-    // Amounts
-    let send_total = byte_copy(from_int_to_byte_array((sentAmount)), 8);
-    let remaining_total = byte_copy(from_int_to_byte_array((remainingAmount)), 8);
-    let fee_total = byte_copy(from_int_to_byte_array((fee)), 8);
-    
-    console.log({
-      send_total,
-      remaining_total,
-      fee_total,
-      sentAmount,
-      remainingAmount,
-      fee
-    })
-    message.pushArray(send_total)
-    message.pushArray(remaining_total)
-    message.pushArray(fee_total)
-
-    // Get message to sign (exact same slice as original)
-    const messageToSign = message.slice(
-      10 + 16 + 32 * 3 + 2,
-      10 + 16 + 32 * 3 + 2 + 2208 * 3 + 3 * 8
-    )
-
-    // Hash message
-    const hashMessage = this.wots.sha256((messageToSign.toASCII()))
-
-    // Get public seed and address from source WOTS
-    // const pubSeed = sourceWOTS.slice(2144, 2144 + 32)
-    // const pubAddr = sourceWOTS.slice(2144 + 32, 2144 + 64)
-
-    // Generate signature
-    const signature = this.wots.generateSignatureFrom(sourceSecret, hashMessage)
-    console.log("signature length", signature.byteLength)
-    message.pushArray(Array.from(signature))
-
-    // Add trailer
-    message.pushArray(generateZeros(2))
-    message.pushArray([205, 171])
-
-    console.log('tx message', {
-      message
-    })
-    return new Uint8Array(message)
-  }
-
-  // Helper to convert bigint to 8-byte array
-  private static bigintToBytes(value: bigint): Uint8Array {
-    if (value < 0n) {
-      throw new Error('Value must be non-negative')
-    }
-    
-    // Check if value fits in 8 bytes
-    if (value > BigInt('0xFFFFFFFFFFFFFFFF')) {
-      throw new Error('Value too large for 8 bytes')
-    }
-
-    const buffer = new Uint8Array(8)
-    for (let i = 0; i < 8; i++) {
-      buffer[7 - i] = Number((value >> BigInt(i * 8)) & 0xffn)
-    }
-    return buffer
-  }
-
-  /**
-   * Creates and signs a transaction
-   */
-  static async createTransaction(
-    wallet: MasterWallet,
-    accountIndex: number,
-    destinationTag: string,
-    amount: number,
-    fee: number = 500
-  ): Promise<Uint8Array> {
-    // Validate inputs
-    if (amount <= 0n) {
-      throw new Error('Amount must be positive')
-    }
-    if (fee < 0n) {
-      throw new Error('Fee cannot be negative')
-    }
-    if (!destinationTag || !this.isValidTag(destinationTag)) {
-      throw new Error('Invalid destination tag')
-    }
-
-    const account = wallet.accounts[accountIndex]
-    if (!account) throw new Error('Account not found')
-    const sourceTagResponse = await MochimoService.resolveTag(account.tag)
-    if (!sourceTagResponse.success) {
-      throw new Error('Failed to resolve source tag')
-    } 
-    // Get current WOTS key pair
-    const currentWOTSSeed = this.deriveWotsSeed(wallet.masterSeed, account.index, account.wotsIndex)
-    const sourceWOTS = this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
-   
-    console.log('Current WOTS pk:', sourceWOTS)
-    console.log('Current WOTS pk network:', sourceTagResponse.addressConsensus)
-    
-    if(sourceWOTS !== sourceTagResponse.addressConsensus) {
-      //try to debug this
-      //try different indices for wots index until it matches the network address. we will show the correct index in logs
-      for(let i = 0; i < 100; i++) {
-        const sourceWOTS = this.computeWOTSAddress(wallet.masterSeed, account, i)
-        if(sourceWOTS === sourceTagResponse.addressConsensus) {
-          throw new Error(`Current WOTS pk does not match network. Index: ${i}`);
-        }
-      }
-      throw new Error('Current WOTS pk does not match network');
-
-    }else {
-      console.log('Current WOTS pk matches network. Index:', account.wotsIndex)
-    }
-
-
-    // Get destination address from tag
-    const destTagResponse = await MochimoService.resolveTag(destinationTag)
-    if (!destTagResponse.success) {
-      throw new Error(`Failed to resolve tag:  || 'Unknown error'}`)
-    }
-    if (!destTagResponse.addressConsensus) {
-      throw new Error('No consensus on destination address')
-    }
-    if (!destTagResponse.balanceConsensus) {
-      throw new Error('No consensus on source balance')
-    }
-
-    const currentBalance = Number(sourceTagResponse.balanceConsensus)
-    if (currentBalance < (amount + fee)) {
-      throw new Error(`Insufficient balance: have ${currentBalance}, need ${amount + fee}`)
-    }
-
-    const remainingAmount = currentBalance - amount - fee
-
-    // Compute transaction
-    return this.computeTransaction({
-      sourceWOTS: Buffer.from(sourceWOTS, 'hex'),
-      sourceSecret: currentWOTSSeed,
-      //convert to Uint8Array from hex string
-      changeWOTS: Buffer.from(this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex + 1), 'hex'),
-      destinationWOTS: Buffer.from(destTagResponse.addressConsensus, 'hex'),
-      sentAmount: amount,
-      remainingAmount,
-      fee
-    })
+  static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
+    const hdwallet = new HDWallet(Buffer.from(masterSeed).toString('hex'))
+    const hdAccount = hdwallet.getAccount(account.index)
+    return Buffer.from(hdAccount.getWotsAddress(wotsIndex)).toString('hex')
   }
 } 
