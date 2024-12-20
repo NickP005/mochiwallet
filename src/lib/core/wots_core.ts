@@ -45,6 +45,9 @@ export class WOTS {
   }
 
   public generatePKFrom(wots_seed: string, tag?: string): Uint8Array {
+    if(tag && tag.length !== 24) {
+      throw new Error('Invalid tag format')
+    }
     // Validate tag format if provided
     if (tag !== undefined) {
       // Tag must be 24 characters long and contain only hex characters (0-9, A-F)

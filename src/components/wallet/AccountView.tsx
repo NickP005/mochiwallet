@@ -32,6 +32,7 @@ import {
 import { WalletCore as WalletService, WalletAccount, MasterWallet, WalletCore } from '@/lib/core/wallet'
 import { MochimoService } from '@/lib/services/mochimo'
 
+import { Input } from '../ui/input'
 import BigNumber from 'bignumber.js'
 import CryptoJS from 'crypto-js'
 import { useToast } from '@/components/ui/use-toast'
@@ -162,14 +163,16 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
       setCheckingActivation(true)
       const response = await WalletService.checkActivationStatus(account)
       setIsActivated(response)
-
+      const currentWOTS = WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
+      console.log('Current WOTS:', currentWOTS)
+      console.log('derive current wots:', WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex))
+      console.log('are they the same?', currentWOTS === WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex))
       // Update balance if account is activated
       if (response) {
         const tagResponse = await MochimoService.resolveTag(account.tag)
         console.log('Tag Response:', tagResponse)
         //compare with current wots address
-        const currentWOTS = Buffer.from(WalletService.wots.generatePKFrom(WalletService.deriveAccountSeed(wallet.masterSeed, account.index) + account.wotsIndex.toString(16).padStart(8, '0'), account.tag))
-        console.log('Current WOTS:', currentWOTS.toString('hex'))
+        console.log('Current WOTS:', currentWOTS)
         console.log('Network WOTS:', tagResponse.addressConsensus)
 
         if (tagResponse.success && tagResponse.balanceConsensus) {
@@ -238,8 +241,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
       setError('')
 
       // Convert amount to nanochains (1 MCM = 1e9 nMCM)
-      const amountNano = BigInt(Math.floor(parseFloat(data.amount) * 1e9))
-      
+      const amountNano = parseInt(parseFloat(data.amount).toFixed(9).toString().replaceAll(".", ""))
       // Optional fee (could be added to form later)
       const fee = 500
 
@@ -253,21 +255,38 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
         account.index,
         data.destinationTag,
         amountNano,
-        BigInt(fee)
+        (fee)
       )
 
       // Convert transaction bytes to base64
-      const txBase64 = Buffer.from(tx).toString('base64')
+      function _arrayBufferToBase64(buffer) {
+        function b2a(a) {
+            var c, d, e, f, g, h, i, j, o, b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", k = 0, l = 0, m = "", n: string[] = [];
+            if (!a) return a;
+            // eslint-disable-next-line no-unused-expressions
+            do c = a.charCodeAt(k++), d = a.charCodeAt(k++), e = a.charCodeAt(k++), j = c << 16 | d << 8 | e,
+                f = 63 & j >> 18, g = 63 & j >> 12, h = 63 & j >> 6, i = 63 & j, n[l++] = b.charAt(f) + b.charAt(g) + b.charAt(h) + b.charAt(i);
+            while (k < a.length);
+            return m = n.join(""), o = a.length % 3, (o ? m.slice(0, o - 3) : m) + "===".slice(o || 3);
+        }
+        var binary = ''; var bytes = new Uint8Array(buffer);
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return b2a(binary);
+    }
+      const txBase64 = _arrayBufferToBase64(tx)
 
       // Send transaction to network
       console.log('Sending transaction to network...', txBase64)
-      // const response = await MochimoService.pushTransaction(txBase64)
-      // console.log('Push transaction response:', response)
+      const response = await MochimoService.pushTransaction(txBase64)
+      console.log('Push transaction response:', response)
 
       // Clear form and close send view
       form.reset()
       setShowSend(false)
-      
+
       // Show success message
       toast({
         title: 'Transaction sent!',
@@ -283,7 +302,7 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
     } catch (err: any) {
       console.error('Send error:', err)
       setError(err.message || 'Failed to send transaction')
-      
+
       toast({
         title: 'Transaction failed',
         description: err.message || 'Failed to send transaction',
@@ -296,25 +315,11 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   }
 
   const getCurrentAddress = () => {
-    const currentWOTSSeed = CryptoJS.SHA256(
-      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) +
-      account.wotsIndex.toString(16).padStart(8, '0')
-    ).toString()
-
-    return Buffer.from(
-      WalletService.wots.generatePKFrom(currentWOTSSeed, account.tag)
-    ).toString('hex')
+    return WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
   }
 
   const getNextAddress = () => {
-    const nextWOTSSeed = CryptoJS.SHA256(
-      WalletService.deriveAccountSeed(wallet.masterSeed, account.index) +
-      (account.wotsIndex + 1).toString(16).padStart(8, '0')
-    ).toString()
-
-    return Buffer.from(
-      WalletService.wots.generatePKFrom(nextWOTSSeed, account.tag)
-    ).toString('hex')
+    return WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex + 1)
   }
 
   const advancedSection = (
@@ -610,9 +615,9 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                             </FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Input 
-                                  {...field} 
-                                  placeholder="Enter destination tag" 
+                                <Input
+                                  {...field}
+                                  placeholder="Enter destination tag"
                                   disabled={isLoading}
                                   className="pr-10"
                                 />
@@ -645,8 +650,8 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                             </FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Input 
-                                  {...field} 
+                                <Input
+                                  {...field}
                                   type="number"
                                   step="0.000000001"
                                   min="0"
@@ -671,8 +676,8 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
 
                       {/* Actions */}
                       <div className="flex flex-col gap-2 pt-2">
-                        <Button 
-                          type="submit" 
+                        <Button
+                          type="submit"
                           disabled={isLoading}
                           className="w-full bg-primary hover:bg-primary/90"
                         >
@@ -688,8 +693,8 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
                             </>
                           )}
                         </Button>
-                        <Button 
-                          type="button" 
+                        <Button
+                          type="button"
                           variant="outline"
                           disabled={isLoading}
                           onClick={() => {

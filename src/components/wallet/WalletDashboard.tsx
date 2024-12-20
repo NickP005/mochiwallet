@@ -34,7 +34,7 @@ export function WalletDashboard({
       
       const accountIndex = Object.keys(accounts).length
       const account = WalletCore.createAccount(wallet, accountIndex)
-      
+      console.log('Account created:', account, wallet.masterSeed)
       // Update wallet accounts
       wallet.accounts[accountIndex] = account
       
@@ -45,7 +45,9 @@ export function WalletDashboard({
       console.log('Saving updated wallet...')
       await SecureStorage.saveWallet(wallet, wallet.password)
       console.log('Wallet saved with new account')
-      
+      //current wots for that account
+      const currentWots = WalletCore.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
+      console.log('Current WOTS:', currentWots)
       // Select the new account
       setSelectedAccount(accountIndex)
     } catch (error) {

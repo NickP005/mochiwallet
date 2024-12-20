@@ -26,9 +26,9 @@ interface TransactionParams {
   sourceSecret: string
   changeWOTS: Uint8Array
   destinationWOTS: Uint8Array
-  sentAmount: bigint
-  remainingAmount: bigint
-  fee: bigint
+  sentAmount: number
+  remainingAmount: number
+  fee: number
 }
 
 export class WalletCore {
@@ -46,12 +46,20 @@ export class WalletCore {
   }
 
   /**
+   * Derives WOTS seed from master seed, account index, and WOTS index
+   */
+  public static deriveWotsSeed(masterSeed: Uint8Array, accountIndex: number, wotsIndex: number): string {
+    const baseSeed = this.deriveAccountSeed(masterSeed, accountIndex)
+    return CryptoJS.SHA256(baseSeed + wotsIndex.toString(16).padStart(8, '0')).toString()
+  }
+
+  /**
    * Computes WOTS address for given account and index
    */
   public static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
-    const baseSeed = this.deriveAccountSeed(masterSeed, account.index)
-    const wotsSeed = CryptoJS.SHA256(baseSeed + wotsIndex.toString(16).padStart(8, '0')).toString()
+    const wotsSeed = this.deriveWotsSeed(masterSeed, account.index, wotsIndex)
     const publicKey = this.wots.generatePKFrom(wotsSeed, account.tag)
+    console.log('publicKey:', publicKey.byteLength)
     return Buffer.from(publicKey).toString('hex')
   }
 
@@ -141,12 +149,10 @@ export class WalletCore {
     if (wallet.accounts[accountIndex]) {
       throw new Error(`Account ${accountIndex} already exists`)
     }
+    console.log('Creating account:', accountIndex, wallet.masterSeed)
 
     // Generate account base seed
-    const accountSeedData = new Uint8Array([
-      ...wallet.masterSeed,
-      ...new Uint8Array([accountIndex])
-    ])
+    const accountSeedData = this.deriveAccountSeed(wallet.masterSeed, accountIndex)
     const baseSeed = CryptoJS.SHA256(
       Buffer.from(accountSeedData).toString('hex')
     ).toString()
@@ -202,15 +208,10 @@ export class WalletCore {
     }
 
     // Compute current WOTS address
-    const currentWOTSSeed = CryptoJS.SHA256(
-      this.deriveAccountSeed(wallet.masterSeed, account.index) +
-      account.wotsIndex.toString(16).padStart(8, '0')
-    ).toString()
+    const currentWOTSSeed = this.deriveWotsSeed(wallet.masterSeed, account.index, account.wotsIndex)
 
     // Get current address
-    const currentAddress = Buffer.from(
-      this.wots.generatePKFrom(currentWOTSSeed, account.tag)
-    ).toString('hex')
+    const currentAddress = this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
 
     // Sign the transaction
     const signature = this.wots.generateSignatureFrom(currentWOTSSeed, Buffer.from(transaction))
@@ -369,7 +370,7 @@ export class WalletCore {
         console.log('Account not activated:', {
           tag: account.tag,
           success: response.success,
-          unanimous: response.unanimous
+          unanimous: response.unanimous,
         })
         account.isActivated = false
       }
@@ -435,46 +436,82 @@ export class WalletCore {
     fee
   }: TransactionParams): Uint8Array {
     // Validate WOTS lengths
-    if (sourceWOTS.length !== 2208 || changeWOTS.length !== 2208 || destinationWOTS.length !== 2208) {
+    if (sourceWOTS.byteLength !== 2208 || changeWOTS.byteLength !== 2208 || destinationWOTS.byteLength !== 2208) {
       throw new Error('Invalid WOTS length')
+    }
+    function from_int_to_byte_array(long: number): number[] {
+      const byteArray = [0, 0, 0, 0, 0, 0, 0, 0]
+      for (let index = 0; index < byteArray.length; index++) {
+        const byte = long & 0xff
+        byteArray[index] = byte
+        long = (long - byte) / 256
+      }
+      return byteArray
+    }
+    function byte_copy(source: number[], num_bytes: number): number[] {
+      const output: number[] = []
+      for (let i = 0; i < num_bytes; i++) {
+        output.push(source[i] === undefined ? 0 : source[i])
+      }
+      return output
+    }
+    Array.prototype.pushArray = function(arr) {
+      this.push.apply(this, arr);
+    };
+    if (typeof Array.prototype.toASCII !== 'function') {
+      Array.prototype.toASCII = function(this: number[]): string {
+        return this.map(byte => String.fromCharCode(byte)).join('')
+      }
     }
 
     // Helper to generate zeros
-    const generateZeros = (count: number): number[] => new Array(count).fill(0)
+    const generateZeros = (count: number): number[] => new Array(count).fill(0).map(Number)
 
     // Create message array
     let message: number[] = []
 
     // Network header (2 bytes of zeros)
-    message.push(...generateZeros(2))
+    message.pushArray(generateZeros(2)); //things of network etc
 
     // Protocol version
     message.push(57, 5)
 
     // Network stuff (4 bytes of zeros)
-    message.push(...generateZeros(4))
+    message.pushArray(generateZeros(4))
 
     // Transaction type (3 as 2 bytes)
     message.push(0, 3)
 
     // Block fields (16 bytes of zeros)
-    message.push(...generateZeros(16))
+    message.pushArray(generateZeros(16))
 
     // Block hashes and weight (32*3 bytes of zeros)
-    message.push(...generateZeros(32 * 3))
+    message.pushArray(generateZeros(32 * 3))
 
     // Length fields (2 bytes of zeros)
-    message.push(...generateZeros(2))
+    message.pushArray(generateZeros(2))
 
     // WOTS addresses
-    message.push(...Array.from(sourceWOTS))
-    message.push(...Array.from(destinationWOTS))
-    message.push(...Array.from(changeWOTS))
+    message.pushArray(Array.from(sourceWOTS))
+    message.pushArray(Array.from(destinationWOTS))
+    message.pushArray(Array.from(changeWOTS))
 
     // Amounts
-    message.push(...Array.from(this.bigintToBytes(sentAmount)))
-    message.push(...Array.from(this.bigintToBytes(remainingAmount)))
-    message.push(...Array.from(this.bigintToBytes(fee)))
+    let send_total = byte_copy(from_int_to_byte_array((sentAmount)), 8);
+    let remaining_total = byte_copy(from_int_to_byte_array((remainingAmount)), 8);
+    let fee_total = byte_copy(from_int_to_byte_array((fee)), 8);
+    
+    console.log({
+      send_total,
+      remaining_total,
+      fee_total,
+      sentAmount,
+      remainingAmount,
+      fee
+    })
+    message.pushArray(send_total)
+    message.pushArray(remaining_total)
+    message.pushArray(fee_total)
 
     // Get message to sign (exact same slice as original)
     const messageToSign = message.slice(
@@ -483,7 +520,7 @@ export class WalletCore {
     )
 
     // Hash message
-    const hashMessage = this.wots.sha256(new Uint8Array(messageToSign))
+    const hashMessage = this.wots.sha256((messageToSign.toASCII()))
 
     // Get public seed and address from source WOTS
     // const pubSeed = sourceWOTS.slice(2144, 2144 + 32)
@@ -491,12 +528,16 @@ export class WalletCore {
 
     // Generate signature
     const signature = this.wots.generateSignatureFrom(sourceSecret, hashMessage)
-    message.push(...Array.from(signature))
+    console.log("signature length", signature.byteLength)
+    message.pushArray(Array.from(signature))
 
     // Add trailer
-    message.push(...generateZeros(2))
-    message.push(205, 171)
+    message.pushArray(generateZeros(2))
+    message.pushArray([205, 171])
 
+    console.log('tx message', {
+      message
+    })
     return new Uint8Array(message)
   }
 
@@ -525,8 +566,8 @@ export class WalletCore {
     wallet: MasterWallet,
     accountIndex: number,
     destinationTag: string,
-    amount: bigint,
-    fee: bigint = 0n
+    amount: number,
+    fee: number = 500
   ): Promise<Uint8Array> {
     // Validate inputs
     if (amount <= 0n) {
@@ -546,37 +587,27 @@ export class WalletCore {
       throw new Error('Failed to resolve source tag')
     } 
     // Get current WOTS key pair
-    const currentWOTSSeed = CryptoJS.SHA256(
-      this.deriveAccountSeed(wallet.masterSeed, account.index) +
-      account.wotsIndex.toString(16).padStart(8, '0')
-    ).toString()
-    const sourceWOTS = Buffer.from(this.wots.generatePKFrom(currentWOTSSeed, account.tag))
+    const currentWOTSSeed = this.deriveWotsSeed(wallet.masterSeed, account.index, account.wotsIndex)
+    const sourceWOTS = this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
    
-    console.log('Current WOTS pk:', sourceWOTS.toString('hex'))
+    console.log('Current WOTS pk:', sourceWOTS)
     console.log('Current WOTS pk network:', sourceTagResponse.addressConsensus)
     
-    if(sourceWOTS.toString('hex') !== sourceTagResponse.addressConsensus) {
+    if(sourceWOTS !== sourceTagResponse.addressConsensus) {
       //try to debug this
       //try different indices for wots index until it matches the network address. we will show the correct index in logs
       for(let i = 0; i < 100; i++) {
-        const currentWOTSSeed = CryptoJS.SHA256(
-          this.deriveAccountSeed(wallet.masterSeed, account.index) +
-          i.toString(16).padStart(8, '0')
-        ).toString()
-        const sourceWOTS = Buffer.from(this.wots.generatePKFrom(currentWOTSSeed, account.tag))
-        if(sourceWOTS.toString('hex') === sourceTagResponse.addressConsensus) {
+        const sourceWOTS = this.computeWOTSAddress(wallet.masterSeed, account, i)
+        if(sourceWOTS === sourceTagResponse.addressConsensus) {
           throw new Error(`Current WOTS pk does not match network. Index: ${i}`);
         }
       }
       throw new Error('Current WOTS pk does not match network');
 
+    }else {
+      console.log('Current WOTS pk matches network. Index:', account.wotsIndex)
     }
 
-    // Generate next WOTS key pair for change
-    const nextWOTSSeed = CryptoJS.SHA256(
-      this.deriveAccountSeed(wallet.masterSeed, account.index) +
-      (account.wotsIndex + 1).toString(16).padStart(8, '0')
-    ).toString()
 
     // Get destination address from tag
     const destTagResponse = await MochimoService.resolveTag(destinationTag)
@@ -590,7 +621,7 @@ export class WalletCore {
       throw new Error('No consensus on source balance')
     }
 
-    const currentBalance = BigInt(sourceTagResponse.balanceConsensus)
+    const currentBalance = Number(sourceTagResponse.balanceConsensus)
     if (currentBalance < (amount + fee)) {
       throw new Error(`Insufficient balance: have ${currentBalance}, need ${amount + fee}`)
     }
@@ -599,9 +630,10 @@ export class WalletCore {
 
     // Compute transaction
     return this.computeTransaction({
-      sourceWOTS: Buffer.from(sourceWOTS),
+      sourceWOTS: Buffer.from(sourceWOTS, 'hex'),
       sourceSecret: currentWOTSSeed,
-      changeWOTS: Buffer.from(this.wots.generatePKFrom(nextWOTSSeed, account.tag)),
+      //convert to Uint8Array from hex string
+      changeWOTS: Buffer.from(this.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex + 1), 'hex'),
       destinationWOTS: Buffer.from(destTagResponse.addressConsensus, 'hex'),
       sentAmount: amount,
       remainingAmount,

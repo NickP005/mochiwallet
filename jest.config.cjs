@@ -1,4 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
+const path = require("path")
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
@@ -13,6 +14,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    "^webextension-polyfill$": "<rootDir>/src/__mocks__/browser.ts",
   },
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   testMatch: ['**/__tests__/**/*.test.ts'],

@@ -1,160 +1,102 @@
-// TODO:: FIX ONCE FIREFOX STORAGE IS SOLVED
-test('test', () => {
-  expect(true).toBe(true)
-})
-// // Mock needs to be before any imports
-// const mockStorage = {
-//   local: {
-//     get: jest.fn().mockResolvedValue({}),
-//     set: jest.fn().mockResolvedValue(undefined),
-//     remove: jest.fn().mockResolvedValue(undefined)
-//   }
-// }
+import { SecureStorage } from '../storage'
+import mockBrowser, { mockStorage } from '../../../__mocks__/browser'
+import { WalletCore } from '@/lib/core/wallet'
 
-// // Mock the module before importing
-// jest.mock('webextension-polyfill', () => ({
-//   storage: mockStorage
-// }))
+describe('SecureStorage - Real World Scenarios', () => {
+  const password = 'test_password123!'
+  let storedData: any = {}
 
-// // Now we can import our modules
-// import { SecureStorage } from '../storage'
+  beforeEach(() => {
+    jest.clearAllMocks()
 
+      // Set up storage mocks
+      ; (mockStorage.local.set as jest.Mock).mockImplementation((data) => {
+        storedData = data
+        return Promise.resolve()
+      })
+      ; (mockStorage.local.get as jest.Mock).mockImplementation(() => {
+        return Promise.resolve(storedData)
+      })
+  })
 
-// describe('SecureStorage', () => {
-//   const mockWallet = {
-//     mnemonic: 'test mnemonic',
-//     masterSeed: new Uint8Array([1, 2, 3]),
-//     accounts: {},
-//   }
+  it('should handle complete wallet lifecycle', async () => {
+    // 1. Create and save initial master wallet
+    const masterWallet = WalletCore.createMasterWallet(password)
+    await SecureStorage.saveWallet(masterWallet, password)
 
-//   const mockPassword = 'testPassword123!'
+    // Verify initial save
+    expect(mockStorage.local.set).toHaveBeenCalledTimes(1)
 
-//   beforeEach(() => {
-//     // Clear all mocks before each test
-//     jest.clearAllMocks()
-    
-//     // Reset mock implementations
-//     mockStorage.local.get.mockResolvedValue({})
-//     mockStorage.local.set.mockResolvedValue(undefined)
-//     mockStorage.local.remove.mockResolvedValue(undefined)
-//   })
+    // Load and verify initial wallet
+    const loadedWallet1 = await SecureStorage.loadWallet(password)
+    expect(loadedWallet1).toEqual(masterWallet)
+    expect(Object.keys(loadedWallet1.accounts)).toHaveLength(0)
 
-//   describe('encrypt', () => {
-//     it('should encrypt data with password', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
+    // 2. Add first account
+    const account1 = WalletCore.createAccount(masterWallet, 0)
+    await SecureStorage.saveWallet(masterWallet, password)
 
-//       expect(encrypted).toHaveProperty('data')
-//       expect(encrypted).toHaveProperty('salt')
-//       expect(encrypted).toHaveProperty('iv')
-//       expect(encrypted).toHaveProperty('version')
-//       expect(encrypted).toHaveProperty('iterations')
-//       expect(encrypted).toHaveProperty('timestamp')
-//       expect(encrypted).toHaveProperty('attempts')
-//     })
+    // Load and verify wallet with first account
+    const loadedWallet2 = await SecureStorage.loadWallet(password)
+    expect(loadedWallet2.accounts[0]).toBeDefined()
+    expect(loadedWallet2.accounts[0].tag).toBe(account1.tag)
+    expect(loadedWallet2.accounts[0].index).toBe(0)
+    expect(Object.keys(loadedWallet2.accounts)).toHaveLength(1)
 
-//     it('should generate different ciphertexts for same data', async () => {
-//       const encrypted1 = await SecureStorage.encrypt(mockWallet, mockPassword)
-//       const encrypted2 = await SecureStorage.encrypt(mockWallet, mockPassword)
+    // 3. Add second account
+    const account2 = WalletCore.createAccount(masterWallet, 1)
+    await SecureStorage.saveWallet(masterWallet, password)
 
-//       expect(encrypted1.data).not.toBe(encrypted2.data)
-//       expect(encrypted1.salt).not.toBe(encrypted2.salt)
-//       expect(encrypted1.iv).not.toBe(encrypted2.iv)
-//     })
-//   })
+    // Load and verify wallet with both accounts
+    const loadedWallet3 = await SecureStorage.loadWallet(password)
+    expect(loadedWallet3.accounts[0]).toBeDefined()
+    expect(loadedWallet3.accounts[1]).toBeDefined()
+    expect(loadedWallet3.accounts[0].tag).toBe(account1.tag)
+    expect(loadedWallet3.accounts[1].tag).toBe(account2.tag)
+    expect(Object.keys(loadedWallet3.accounts)).toHaveLength(2)
 
-//   describe('decrypt', () => {
-//     it('should decrypt encrypted data correctly', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-//       const decrypted = await SecureStorage.decrypt(encrypted, mockPassword)
+    // Verify account specific data
+    expect(loadedWallet3.accounts[0].wotsIndex).toBe(0)
+    expect(loadedWallet3.accounts[1].wotsIndex).toBe(0)
+    expect(loadedWallet3.accounts[0].isActivated).toBe(false)
+    expect(loadedWallet3.accounts[1].isActivated).toBe(false)
 
-//       expect(decrypted).toEqual(mockWallet)
-//     })
+    // Verify master wallet data persisted
+    expect(loadedWallet3.mnemonic).toBe(masterWallet.mnemonic)
+    expect(Buffer.from(loadedWallet3.masterSeed).toString('hex'))
+      .toBe(Buffer.from(masterWallet.masterSeed).toString('hex'))
 
-//     it('should fail with wrong password', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-//       await expect(
-//         SecureStorage.decrypt(encrypted, 'wrongPassword')
-//       ).rejects.toThrow('Invalid password')
-//     })
+    // 4. Modify account state
+    masterWallet.accounts[0].wotsIndex = 1
+    masterWallet.accounts[0].isActivated = true
+    await SecureStorage.saveWallet(masterWallet, password)
 
-//     it('should handle version mismatch', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-//       encrypted.version = 999
+    // Load and verify modified state
+    const loadedWallet4 = await SecureStorage.loadWallet(password)
+    expect(loadedWallet4.accounts[0].wotsIndex).toBe(1)
+    expect(loadedWallet4.accounts[0].isActivated).toBe(true)
+    expect(loadedWallet4.accounts[1].wotsIndex).toBe(0)
+    expect(loadedWallet4.accounts[1].isActivated).toBe(false)
 
-//       await expect(
-//         SecureStorage.decrypt(encrypted, mockPassword)
-//       ).rejects.toThrow('Incompatible wallet version')
-//     })
+    // 5. Verify encryption is working
+    const encryptedData = (mockStorage.local.set as jest.Mock).mock.calls[0][0].encryptedWallet
+    expect(encryptedData.data).not.toContain(masterWallet.mnemonic)
+    expect(encryptedData.data).not.toContain(account1.tag)
+    expect(encryptedData.data).not.toContain(account2.tag)
 
-//     it('should handle too many attempts', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-//       encrypted.attempts = 3
-//       encrypted.timestamp = Date.now()
+    // 6. Verify wrong password fails
+    await expect(
+      SecureStorage.loadWallet('wrong_password')
+    ).rejects.toThrow('Invalid password')
 
-//       await expect(
-//         SecureStorage.decrypt(encrypted, mockPassword)
-//       ).rejects.toThrow('Wallet is locked')
-//     })
-//   })
+    // 7. Remove wallet
+    await SecureStorage.removeWallet()
+    expect(mockStorage.local.remove).toHaveBeenCalledWith('encryptedWallet')
 
-//   describe('storage operations', () => {
-//     it('should store and retrieve wallet', async () => {
-//       await SecureStorage.saveWallet(mockWallet, mockPassword)
-      
-//       const storedWallet = await SecureStorage.loadWallet(mockPassword)
-//       expect(storedWallet).toEqual(mockWallet)
-      
-//       expect(mockStorage.local.set).toHaveBeenCalled()
-//       expect(mockStorage.local.get).toHaveBeenCalled()
-//     })
-
-//     it('should handle storage errors', async () => {
-//       mockStorage.local.set.mockRejectedValue(new Error('Storage error'))
-      
-//       await expect(
-//         SecureStorage.saveWallet(mockWallet, mockPassword)
-//       ).rejects.toThrow('Storage error')
-//     })
-
-//     it('should handle missing wallet', async () => {
-//       mockStorage.local.get.mockResolvedValue({})
-      
-//       await expect(
-//         SecureStorage.loadWallet(mockPassword)
-//       ).rejects.toThrow('No wallet found')
-//     })
-//   })
-
-//   describe('password attempts', () => {
-//     it('should track failed attempts', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-      
-//       await expect(
-//         SecureStorage.decrypt(encrypted, 'wrong1')
-//       ).rejects.toThrow()
-      
-//       await expect(
-//         SecureStorage.decrypt(encrypted, 'wrong2')
-//       ).rejects.toThrow()
-      
-//       expect(encrypted.attempts).toBe(2)
-//     })
-
-//     it('should lock after max attempts', async () => {
-//       const encrypted = await SecureStorage.encrypt(mockWallet, mockPassword)
-      
-//       // Simulate max attempts
-//       for (let i = 0; i < 5; i++) {
-//         try {
-//           await SecureStorage.decrypt(encrypted, 'wrong')
-//         } catch (e) {
-//           // Expected
-//         }
-//       }
-      
-//       await expect(
-//         SecureStorage.decrypt(encrypted, mockPassword)
-//       ).rejects.toThrow('Too many failed attempts')
-//     })
-//   })
-// }) 
+      // 8. Verify wallet is gone
+      ; (mockStorage.local.get as jest.Mock).mockResolvedValue({})
+    await expect(
+      SecureStorage.loadWallet(password)
+    ).rejects.toThrow('No wallet found')
+  })
+}) 

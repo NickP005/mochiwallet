@@ -27,9 +27,9 @@ describe('Transaction Operations', () => {
         sourceSecret: mockSecret,
         destinationWOTS: mockDestWOTS,
         changeWOTS: mockChangeWOTS,
-        sentAmount: 1000n,
-        remainingAmount: 500n,
-        fee: 1n
+        sentAmount: 1000,
+        remainingAmount: 500,
+        fee: 1
       })
 
       // Check total length
@@ -55,23 +55,23 @@ describe('Transaction Operations', () => {
           sourceSecret: mockSecret,
           destinationWOTS: mockDestWOTS,
           changeWOTS: mockChangeWOTS,
-          sentAmount: 1000n,
-          remainingAmount: 500n,
-          fee: 1n
+          sentAmount: 1000,
+          remainingAmount: 500,
+          fee: 1
         })
       }).toThrow('Invalid WOTS length')
     })
 
     it('should handle amounts correctly', () => {
-      const maxAmount = BigInt('0xFFFFFFFFFFFFFFFF')
+
       const tx = WalletCore.computeTransaction({
         sourceWOTS: mockSourceWOTS,
         sourceSecret: mockSecret,
         destinationWOTS: mockDestWOTS,
         changeWOTS: mockChangeWOTS,
-        sentAmount: maxAmount,
-        remainingAmount: 0n,
-        fee: 0n
+        sentAmount: 1000000000,
+        remainingAmount: 0,
+        fee: 0
       })
 
       // Check amount bytes (should be max value)
@@ -105,8 +105,8 @@ describe('Transaction Operations', () => {
         wallet,
         0,
         'ABCDEF1234567890ABCDEF12',
-        1000n,
-        1n
+        1000,
+        1
       )
 
       expect(tx).toBeInstanceOf(Uint8Array)
@@ -116,17 +116,17 @@ describe('Transaction Operations', () => {
 
     it('should validate amounts', async () => {
       await expect(
-        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', -1n)
+        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', -1)
       ).rejects.toThrow('Amount must be positive')
 
       await expect(
-        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1n, -1n)
+        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1, -1)
       ).rejects.toThrow('Fee cannot be negative')
     })
 
     it('should validate destination tag', async () => {
       await expect(
-        WalletCore.createTransaction(wallet, 0, 'invalid_tag', 1000n)
+        WalletCore.createTransaction(wallet, 0, 'invalid_tag', 1000)
       ).rejects.toThrow('Invalid destination tag')
     })
 
@@ -143,7 +143,7 @@ describe('Transaction Operations', () => {
       mockResolveTag.mockResolvedValue(mockLowBalance)
 
       await expect(
-        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1000n)
+        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1000)
       ).rejects.toThrow('Insufficient balance')
     })
 
@@ -158,7 +158,7 @@ describe('Transaction Operations', () => {
       mockResolveTag.mockResolvedValue(mockFailure)
 
       await expect(
-        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1000n)
+        WalletCore.createTransaction(wallet, 0, 'ABCDEF1234567890ABCDEF12', 1000)
       ).rejects.toThrow('Failed to resolve source tag')
     })
   })

@@ -153,7 +153,7 @@ export class MochimoService {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ transaction, recipients })
+        body: JSON.stringify({ transaction })
       })
       return await response.json()
     } catch (error) {
