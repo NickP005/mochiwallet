@@ -3,7 +3,7 @@ import { AccountView } from '@/components/wallet/AccountView'
 import { WalletAccount, WalletCore } from '@/lib/core/wallet'
 import { SecureStorage } from '@/lib/utils/storage'
 import { useState, useEffect } from 'react'
-
+import { test } from '@/lib/services/rosetta'
 interface WalletDashboardProps {
   wallet: any
   sidebarOpen: boolean
@@ -21,6 +21,7 @@ export function WalletDashboard({
 
   // Select first account by default
   useEffect(() => {
+    test()
     if (Object.keys(accounts).length > 0 && selectedAccount === null) {
       setSelectedAccount(0)
     }

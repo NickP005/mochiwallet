@@ -231,13 +231,15 @@ export class WOTS {
         const privateSeed = sha256FromString(wotsSeed + "seed");
         const publicSeed = sha256FromString(wotsSeed + "publ");
         const addrSeed = sha256FromString(wotsSeed + "addr");
-        const toSign = sha256FromBytes(payload);
         
-        console.log('Signing message hash:', toSign);
-        return this.wotsSign(toSign, privateSeed, publicSeed, addrSeed);
+        // Hash the message consistently
+        const messageHash = sha256FromBytes(payload);
+        console.log('Message to sign:', Buffer.from(messageHash).toString('hex'));
+        
+        return this.wotsSign(messageHash, privateSeed, publicSeed, addrSeed);
     }
 
-    private wotsSign(
+    public wotsSign(
         msg: Uint8Array, 
         seed: Uint8Array, 
         pubSeed: Uint8Array, 
@@ -301,13 +303,17 @@ export class WOTS {
     }
 
     public wotsPublicKeyFromSig(
-        sig: Uint8Array,
-        msg: Uint8Array,
+        sig: Uint8Array, 
+        msg: Uint8Array, 
         pubSeed: Uint8Array,
         addrBytes: Uint8Array
     ): Uint8Array {
+        // Hash the message consistently
+        const messageHash = sha256FromBytes(msg);
+        console.log('Message to verify:', Buffer.from(messageHash).toString('hex'));
+        
         const addr = this.bytesToAddr(addrBytes);
-        const lengths = this.chainLengths(msg);
+        const lengths = this.chainLengths(messageHash);
         const publicKey = new Uint8Array(2144);
         let offset = 0;
 

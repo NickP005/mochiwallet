@@ -47,6 +47,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { MochimoRosettaClient } from '@/lib/services/wallet_manager'
 
 // Configure BigNumber
 BigNumber.config({
@@ -121,10 +122,13 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
     }
   ]
 
-  // Check activation status on mount and refresh
+  // Get HDAccount once at component level
+  const hdAccount = wallet.hdWallet.getAccount(account.index)
+
+  // Update useEffect to depend on account index instead of tag
   useEffect(() => {
     checkActivation()
-  }, [account.tag])
+  }, [account.index])
 
   // Format balance to show both nanoMCM and MCM
   const formatBalance = (balanceStr: string | null): { nano: string, mcm: string } => {
@@ -161,25 +165,24 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   const checkActivation = async () => {
     try {
       setCheckingActivation(true)
-      const response = await WalletService.checkActivationStatus(account)
-      setIsActivated(response)
-      const currentWOTS = WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
-      console.log('Current WOTS:', currentWOTS)
-      console.log('derive current wots:', WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex))
-      console.log('are they the same?', currentWOTS === WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex))
-      // Update balance if account is activated
-      if (response) {
-        const tagResponse = await MochimoService.resolveTag(account.tag)
+      const hdAccount = wallet.hdWallet.getAccount(account.index)
+      if (!hdAccount) throw new Error('Account not found')
+
+      const activated = await WalletCore.checkActivationStatus(wallet, account.index)
+      setIsActivated(activated)
+
+      // Get current address from HDWallet
+
+
+      // Update balance if activated
+      if (activated) {
+        const tagResponse = await MochimoService.resolveTag(hdAccount.tag)
         console.log('Tag Response:', tagResponse)
-        //compare with current wots address
-        console.log('Current WOTS:', currentWOTS)
+        console.log('Current WOTS:', currentAddress)
         console.log('Network WOTS:', tagResponse.addressConsensus)
 
         if (tagResponse.success && tagResponse.balanceConsensus) {
-          // Balance is already in nanoMCM, no need to convert
-          const rawBalance = tagResponse.balanceConsensus
-          console.log('Raw Balance from API:', rawBalance)
-          setBalance(rawBalance)
+          setBalance(tagResponse.balanceConsensus)
         }
       } else {
         setBalance(null)
@@ -240,43 +243,18 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
       setIsLoading(true)
       setError('')
 
-      // Convert amount to nanochains (1 MCM = 1e9 nMCM)
       const amountNano = parseInt(parseFloat(data.amount).toFixed(9).toString().replaceAll(".", ""))
-      // Optional fee (could be added to form later)
       const fee = 500
 
-      if (!wallet) {
-        throw new Error('Wallet not found')
-      }
-
-      // Create transaction
       const tx = await WalletCore.createTransaction(
         wallet,
         account.index,
         data.destinationTag,
-        amountNano,
-        (fee)
+        BigInt(amountNano),
+        BigInt(fee)
       )
 
-      // Convert transaction bytes to base64
-      function _arrayBufferToBase64(buffer) {
-        function b2a(a) {
-            var c, d, e, f, g, h, i, j, o, b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", k = 0, l = 0, m = "", n: string[] = [];
-            if (!a) return a;
-            // eslint-disable-next-line no-unused-expressions
-            do c = a.charCodeAt(k++), d = a.charCodeAt(k++), e = a.charCodeAt(k++), j = c << 16 | d << 8 | e,
-                f = 63 & j >> 18, g = 63 & j >> 12, h = 63 & j >> 6, i = 63 & j, n[l++] = b.charAt(f) + b.charAt(g) + b.charAt(h) + b.charAt(i);
-            while (k < a.length);
-            return m = n.join(""), o = a.length % 3, (o ? m.slice(0, o - 3) : m) + "===".slice(o || 3);
-        }
-        var binary = ''; var bytes = new Uint8Array(buffer);
-        var len = bytes.byteLength;
-        for (var i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return b2a(binary);
-    }
-      const txBase64 = _arrayBufferToBase64(tx)
+      const txBase64 = Buffer.from(tx).toString('base64')
 
       // Send transaction to network
       console.log('Sending transaction to network...', txBase64)
@@ -315,24 +293,30 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
   }
 
   const getCurrentAddress = () => {
-    return WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex)
+    const hdAccount = wallet.hdWallet.getAccount(account.index)
+    return hdAccount ? hdAccount.getWotsAddress(hdAccount.getCurrentIndex()) : ''
   }
-
+  
   const getNextAddress = () => {
-    return WalletService.computeWOTSAddress(wallet.masterSeed, account, account.wotsIndex + 1)
+    const hdAccount = wallet.hdWallet.getAccount(account.index)
+    return hdAccount ? hdAccount.getWotsAddress(hdAccount.getCurrentIndex() + 1) : ''
   }
 
   const advancedSection = (
     <CollapsibleContent className="space-y-4 pt-4">
       <div className="rounded-lg border p-4 space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Current Address (Index: {account.wotsIndex})</label>
+          <label className="text-sm font-medium">
+            Current Address (Index: {hdAccount?.getCurrentIndex() || 0})
+          </label>
           <code className="block text-xs bg-muted p-2 rounded break-all">
             {getCurrentAddress()}
           </code>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Next Address (Index: {account.wotsIndex + 1})</label>
+          <label className="text-sm font-medium">
+            Next Address (Index: {(hdAccount?.getCurrentIndex() || 0) + 1})
+          </label>
           <code className="block text-xs bg-muted p-2 rounded break-all">
             {getNextAddress()}
           </code>
@@ -364,13 +348,13 @@ export function AccountView({ wallet, account, onUpdate }: AccountViewProps) {
               <div className="flex items-center gap-2 text-sm">
                 <TagIcon className="h-4 w-4 text-muted-foreground" />
                 <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90">
-                  {account.tag}
+                  {hdAccount?.tag || 'Loading...'}
                 </code>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0 hover:bg-primary/10"
-                  onClick={() => copyToClipboard(account.tag)}
+                  onClick={() => hdAccount && copyToClipboard(hdAccount.tag)}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>

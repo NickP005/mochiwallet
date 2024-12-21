@@ -1,4 +1,7 @@
 import CryptoJS from 'crypto-js'
+import { useState, useEffect } from 'react'
+import { Storage } from '../storage'
+import { WalletCore } from '../core/wallet'
 
 
 interface TagResponse {
@@ -116,4 +119,33 @@ export const generateString = (length: number = 24): string => {
   }
 
   return result.join('').toUpperCase()
+}
+
+export function useWallet() {
+  const [wallet, setWallet] = useState<MasterWallet | null>(null)
+
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const stored = await Storage.getWallet()
+        if (stored) {
+          console.log('Loading stored wallet:', stored)
+          setWallet(stored)
+        }
+      } catch (error) {
+        console.error('Error loading wallet:', error)
+      }
+    }
+    loadWallet()
+  }, [])
+
+  const saveWallet = async (wallet: MasterWallet) => {
+    await Storage.setWallet(wallet)
+    setWallet(wallet)
+  }
+
+  return {
+    wallet,
+    setWallet: saveWallet
+  }
 } 

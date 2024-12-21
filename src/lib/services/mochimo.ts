@@ -155,7 +155,12 @@ export class MochimoService {
         },
         body: JSON.stringify({ transaction })
       })
-      return await response.json()
+      const txt =  await response.text()
+      console.log(txt)
+      return {
+        status: 'error',
+        data: txt
+      }
     } catch (error) {
       console.error('Error pushing transaction:', error)
       throw error

@@ -1,3 +1,6 @@
+import { Operation } from './datagram';
+import { Datagram } from './datagram';
+import { sha256FromString } from './utils/hash';
 import { WOTS } from './wots';
 
 interface TransactionInput {
@@ -17,7 +20,7 @@ export class Transaction {
     public static readonly DST_ADDR_OFFSET: number = 4416;
     public static readonly CHG_ADDR_OFFSET: number = 6624;
     public static readonly TXID_OFFSET: number = 8792;
-    
+
     private static readonly MINIMUM_TRANSACTION_FEE = BigInt(500); // Example minimum fee
 
     /**
@@ -69,7 +72,35 @@ export class Transaction {
         this.validateInput(input);
         this.validateAmounts(input);
         // Create datagram with verified signature
-        return this.createTransactionPayload(input.source, input.destination, input.change, input.balance, input.payment, input.wotsSeed);
+        //dgram 
+        const { signature, payload } = this.createTransactionPayload(input.source, input.destination, input.change, input.balance, input.payment, input.wotsSeed);
+
+
+        const datagram = new Datagram()
+            .setSourceAddress(input.source)
+            .setDestinationAddress(input.destination)
+            .setChangeAddress(input.change)
+            .setAmount(input.payment)
+            .setTotalChange(input.changeAmount)
+            .setFee(input.fee)
+            .setSignature(signature)
+            .setOperation(Operation.Tx);
+
+        const ser = datagram.serialize()
+        const d2 = Datagram.of(ser, 0, ser.length)
+        console.log("COMPARE", datagram.equals(d2))
+        console.log(
+            "SIGNATURE COMPARE",
+            signature,
+            d2.signature,
+            datagram.signature,
+            signature===d2.signature,
+            signature===datagram.signature,
+            signature.length,
+            d2.signature.length,
+            datagram.signature.length
+        )
+        return ser
     }
 
     private static validateInput(input: TransactionInput): void {
@@ -98,7 +129,7 @@ export class Transaction {
             throw new Error("Fee cannot be negative");
         }
         if (input.fee < this.MINIMUM_TRANSACTION_FEE) {
-            console.log({fee: input.fee, minimum: this.MINIMUM_TRANSACTION_FEE});
+            console.log({ fee: input.fee, minimum: this.MINIMUM_TRANSACTION_FEE });
             throw new Error("Fee below minimum");
         }
         if (input.changeAmount < BigInt(0)) {
@@ -147,10 +178,10 @@ export class Transaction {
         change: Uint8Array,
         amount: bigint,
         send: bigint,
-        seed: string
-    ): Uint8Array {
+        seed: string,
+    ): { payload: Uint8Array, signature: Uint8Array } {
         // Create payload with correct size
-        let payload = new Uint8Array(8792); // 2208*3 + 8*3 + 2144
+        let payload = new Uint8Array(8792);
         let offset = 0;
 
         // Append addresses
@@ -160,6 +191,7 @@ export class Transaction {
         offset += to.length;    // 4416
         payload.set(change, offset);
         offset += change.length; // 6624
+        console.log("offset should be 6624", offset, offset===6624)
 
         // Append amounts in little-endian
         const sendBytes = this.toLittleEndianBytes(send, 8);
@@ -172,14 +204,31 @@ export class Transaction {
         offset += 8;    // 6640
         payload.set(feeBytes, offset);
         offset += 8;    // 6648
-
+        console.log("offset should be 6648", offset, offset===6648)
         // Generate and append signature
         const messageToSign = payload.slice(0, offset);
         const wots = new WOTS();
-        const signature = wots.generateSignatureFrom(seed, messageToSign);
-        payload.set(signature, offset); // 6648 + 2144 = 8792
 
-        return payload;
+
+        // Extract components from source address
+        const pk = from.slice(0, 2144);  // First 2144 bytes are the PK
+        const pubSeed = from.slice(2144, 2144 + 32);  // Next 32 bytes are pubSeed
+        const rnd2 = from.slice(2144 + 32, 2144 + 64);  // Next 32 bytes are rnd2
+        const signature = wots.generateSignatureFrom(seed, messageToSign);
+
+        // Verify signature
+        const expectedPK = wots.wotsPublicKeyFromSig(signature, messageToSign, pubSeed, rnd2);
+
+        // Compare only the PK portion
+        if (!this.areEqual(pk, expectedPK)) {
+            console.log("Original PK:", pk);
+            console.log("Expected PK:", expectedPK);
+            throw new Error("Signature verification failed");
+        }
+
+        payload.set(signature, offset); // 6648 + 2144 = 8792
+        console.log("offset should be 8792", offset, offset===8792)
+        return { payload, signature };
     }
 
     private static toLittleEndianBytes(value: bigint, length: number): Uint8Array {

@@ -4,20 +4,16 @@ import { HDWallet } from '../mochicore/hdwallet'
 import { MochimoService } from '../services/mochimo'
 import { Transaction } from '../mochicore/transaction'
 
-
-
 export interface WalletAccount {
   index: number          // Account index
-  tag: string           // Account tag
-  wotsIndex: number     // Current WOTS index
   isActivated?: boolean // Activation status
   name: string
 }
 
 export interface MasterWallet {
   mnemonic: string
-  masterSeed: Uint8Array
-  accounts: { [index: number]: WalletAccount }
+  masterSeed: string    // 32-byte hex string
+  hdWallet: HDWallet    // HDWallet instance
 }
 
 export class WalletCore {
@@ -28,40 +24,48 @@ export class WalletCore {
     if (!mnemonic) {
       mnemonic = Mnemonic.generate()
     }
-    const masterSeed = Mnemonic.toSeed(mnemonic, password)
+    const masterSeed = Buffer.from(Mnemonic.toSeed(mnemonic, password)).toString('hex')
+    const hdWallet = new HDWallet(masterSeed)
 
     return {
       mnemonic,
       masterSeed,
-      accounts: {}
+      hdWallet
+    }
+  }
+
+  /**
+   * Initializes wallet from storage data
+   */
+  static initializeFromStorage(walletData: any): MasterWallet {
+    // Create new HDWallet instance
+    const hdWallet = new HDWallet(walletData.masterSeed)
+    
+    // Re-create all stored accounts
+    if (Array.isArray(walletData.accounts)) {
+      walletData.accounts.forEach((index: number) => {
+        hdWallet.createAccount(index)
+      })
+    }
+
+    return {
+      mnemonic: walletData.mnemonic,
+      masterSeed: walletData.masterSeed,
+      hdWallet
     }
   }
 
   /**
    * Creates a new account in the wallet
    */
-  static createAccount(wallet: MasterWallet, accountIndex: number): WalletAccount {
-    if (wallet.accounts[accountIndex]) {
-      throw new Error(`Account ${accountIndex} already exists`)
-    }
-
-    // Create HDWallet instance
-    const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
+  static createAccount(wallet: MasterWallet, accountIndex: number, name?: string): WalletAccount {
+    const hdAccount = wallet.hdWallet.createAccount(accountIndex)
     
-    // Create account using HDWallet
-    const account = hdwallet.createAccount(accountIndex)
-    
-    // Convert to our WalletAccount format
-    const walletAccount: WalletAccount = {
+    return {
       index: accountIndex,
-      tag: account.getTag(),
-      wotsIndex: account.getCurrentIndex(),
       isActivated: false,
-      name: 'Account ' + (accountIndex + 1)
+      name: name || 'Account ' + (accountIndex + 1)
     }
-
-    wallet.accounts[accountIndex] = walletAccount
-    return walletAccount
   }
 
   /**
@@ -78,15 +82,11 @@ export class WalletCore {
     if (amount <= 0n) throw new Error('Amount must be positive')
     if (fee < 0n) throw new Error('Fee cannot be negative')
 
-    const account = wallet.accounts[accountIndex]
-    if (!account) throw new Error('Account not found')
-
-    // Create HDWallet instance
-    const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
-    const hdAccount = hdwallet.getAccount(accountIndex)
+    const hdAccount = wallet.hdWallet.getAccount(accountIndex)
+    if (!hdAccount) throw new Error('Account not found')
 
     // Get source address info
-    const sourceTagResponse = await MochimoService.resolveTag(account.tag)
+    const sourceTagResponse = await MochimoService.resolveTag(hdAccount.tag)
     if (!sourceTagResponse.success || !sourceTagResponse.addressConsensus) {
       throw new Error('Failed to resolve source tag')
     }
@@ -103,65 +103,54 @@ export class WalletCore {
     }
 
     const changeAmount = currentBalance - amount - fee
+    const currentIndex = hdAccount.getCurrentIndex()
 
     // Get addresses and secret
-    const sourceWOTS = hdAccount.getWotsAddress(account.wotsIndex)
-    const changeWOTS = hdAccount.getWotsAddress(account.wotsIndex + 1)
-    const destinationWOTS = Buffer.from(destTagResponse.addressConsensus, 'hex')
+    const sourceWOTS = Buffer.from(hdAccount.getWotsAddress(currentIndex))
+    const changeWOTS = Buffer.from(hdAccount.getWotsAddress(currentIndex + 1))
+    const destinationWOTS = Buffer.from(destTagResponse.addressConsensus)
+
     return Transaction.sign({
       balance: currentBalance,
       payment: amount,
       fee: fee,
       changeAmount: changeAmount,
       source: sourceWOTS,
-      wotsSeed: hdAccount.generateWotsSeed(account.wotsIndex),
+      wotsSeed: Buffer.from(hdAccount.getWotsSeed(currentIndex)).toString('hex'),
       destination: destinationWOTS,
       change: changeWOTS
     })
   }
 
   /**
-   * Checks account activation status
+   * Activates an account
    */
-  static async checkActivationStatus(account: WalletAccount): Promise<boolean> {
-    try {
-      const response = await MochimoService.resolveTag(account.tag)
-      account.isActivated = Boolean(response.success && response.addressConsensus)
-      return account.isActivated
-    } catch (error) {
-      console.error('Error checking activation status:', error)
-      account.isActivated = false
-      return false
-    }
-  }
   static async activateAccount(wallet: MasterWallet, accountIndex: number): Promise<boolean> {
     try {
-      const account = wallet.accounts[accountIndex]
-      if (!account) {
+      const hdAccount = wallet.hdWallet.getAccount(accountIndex)
+      if (!hdAccount) {
         throw new Error('Account not found')
       }
-      const hdwallet = new HDWallet(Buffer.from(wallet.masterSeed).toString('hex'))
-      const hdAccount = hdwallet.getAccount(accountIndex)
 
-      const currentAddress = hdAccount.getWotsAddress(account.wotsIndex)
+      const currentAddress = hdAccount.getWotsAddress(hdAccount.getCurrentIndex())
 
       console.log('Attempting to activate account:', {
-        tag: account.tag,
+        tag: hdAccount.tag,
         address: currentAddress.slice(0, 64) + '...'
       })
 
-      const response = await MochimoService.activateTag(Buffer.from(currentAddress).toString('hex'))
+      const response = await MochimoService.activateTag(currentAddress)
 
       if (response.success) {
         console.log('Account activation successful:', {
-          tag: account.tag,
+          tag: hdAccount.tag,
           txid: response.data?.txid,
           message: response.data?.message
         })
         return true
       } else {
         console.log('Account activation failed:', {
-          tag: account.tag,
+          tag: hdAccount.tag,
           error: response.error
         })
         return false
@@ -171,9 +160,20 @@ export class WalletCore {
       return false
     }
   }
-  static computeWOTSAddress(masterSeed: Uint8Array, account: WalletAccount, wotsIndex: number): string {
-    const hdwallet = new HDWallet(Buffer.from(masterSeed).toString('hex'))
-    const hdAccount = hdwallet.getAccount(account.index)
-    return Buffer.from(hdAccount.getWotsAddress(wotsIndex)).toString('hex')
+
+  /**
+   * Checks account activation status
+   */
+  static async checkActivationStatus(wallet: MasterWallet, accountIndex: number): Promise<boolean> {
+    try {
+      const hdAccount = wallet.hdWallet.getAccount(accountIndex)
+      if (!hdAccount) return false
+
+      const response = await MochimoService.resolveTag(hdAccount.tag)
+      return Boolean(response.success && response.addressConsensus)
+    } catch (error) {
+      console.error('Error checking activation status:', error)
+      return false
+    }
   }
 } 

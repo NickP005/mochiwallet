@@ -101,7 +101,7 @@ export class Datagram {
     private totalSend: Uint8Array = new Uint8Array(8);
     private totalChange: Uint8Array = new Uint8Array(8);
     private fee: Uint8Array = new Uint8Array(8);
-    private signature: Uint8Array = new Uint8Array(2144);
+    public signature: Uint8Array = new Uint8Array(2144);
 
     private crc: number = 0;
     private trailer: number = 43981;
@@ -286,24 +286,25 @@ export class Datagram {
         buffer[offset++] = this.version;
 
         // Write flags
-        const flagByte = parseInt(this.flags.map(b => b ? '1' : '0').join(''), 2);
-        buffer[offset++] = flagByte;
+        let flags = 0;
+        for (let i = 0; i < 8; i++) {
+            if (this.flags[i]) {
+                flags |= (1 << i);
+            }
+        }
+        buffer[offset++] = flags;
 
-        // Write network (2 bytes, little-endian)
-        buffer[offset++] = this.network & 0xFF;
-        buffer[offset++] = (this.network >> 8) & 0xFF;
-
-        // Write id1 (2 bytes, little-endian)
-        buffer[offset++] = this.id1 & 0xFF;
-        buffer[offset++] = (this.id1 >> 8) & 0xFF;
-
-        // Write id2 (2 bytes, little-endian)
-        buffer[offset++] = this.id2 & 0xFF;
-        buffer[offset++] = (this.id2 >> 8) & 0xFF;
+        // Write network, id1, id2 (2 bytes each, little-endian)
+        this.writeUint16ToBuffer(buffer, offset, this.network);
+        offset += 2;
+        this.writeUint16ToBuffer(buffer, offset, this.id1);
+        offset += 2;
+        this.writeUint16ToBuffer(buffer, offset, this.id2);
+        offset += 2;
 
         // Write operation (2 bytes, little-endian)
-        buffer[offset++] = this.operation & 0xFF;
-        buffer[offset++] = (this.operation >> 8) & 0xFF;
+        this.writeUint16ToBuffer(buffer, offset, this.operation);
+        offset += 2;
 
         // Write cblock (8 bytes, little-endian)
         this.writeBigIntToBuffer(buffer, offset, this.cblock, 8);
@@ -322,38 +323,196 @@ export class Datagram {
         offset += 32;
 
         // Write transaction buffer length (2 bytes, little-endian)
-        buffer[offset++] = this.transactionBufferLength & 0xFF;
-        buffer[offset++] = (this.transactionBufferLength >> 8) & 0xFF;
-
+        // Write transaction buffer length (2 bytes, little-endian)
+        this.writeUint16ToBuffer(buffer, offset, this.transactionBufferLength);
+        offset += 2;
         // Write addresses
         buffer.set(this.sourceAddress, offset);
-        offset += 2208;
+        offset += this.sourceAddress.length;
         buffer.set(this.destinationAddress, offset);
-        offset += 2208;
+        offset += this.destinationAddress.length;
         buffer.set(this.changeAddress, offset);
-        offset += 2208;
+        offset += this.changeAddress.length;
 
         // Write amounts
         buffer.set(this.totalSend, offset);
-        offset += 8;
+        offset += this.totalSend.length;
         buffer.set(this.totalChange, offset);
-        offset += 8;
+        offset += this.totalChange.length;
         buffer.set(this.fee, offset);
-        offset += 8;
+        offset += this.fee.length;
 
         // Write signature
         buffer.set(this.signature, offset);
-        offset += 2144;
+        offset += this.signature.length;
 
         // Calculate and write CRC
         this.crc = this.calculateCRC16(buffer.slice(0, offset));
         buffer[offset++] = this.crc & 0xFF;
         buffer[offset++] = (this.crc >> 8) & 0xFF;
-
-        // Write trailer
-        buffer[offset++] = this.trailer & 0xFF;
-        buffer[offset++] = (this.trailer >> 8) & 0xFF;
-
+        console.log("BUFFER OCCUPIED SPACE", buffer.length, buffer.byteLength)
+        // Write CRC and trailer
+        this.writeUint16ToBuffer(buffer, offset, this.crc);
+        offset += 2;
+        this.writeUint16ToBuffer(buffer, offset, this.trailer);
+        offset += 2;
+        //print actual buffer length
+        console.log("BUFFER OCCUPIED SPACE", offset, buffer.length, buffer.byteLength)
         return buffer;
     }
+
+    private writeUint16ToBuffer(buffer: Uint8Array, offset: number, value: number): void {
+        buffer[offset] = value & 0xFF;
+        buffer[offset + 1] = (value >> 8) & 0xFF;
+    }
+    /**
+     * Creates a Datagram from a byte array
+     * @param data - Source byte array
+     * @param offset - Offset in the byte array
+     * @param length - Length of data to read
+     * @returns New Datagram instance
+     */
+    public static of(data: Uint8Array, offset: number, length: number): Datagram {
+        if (data.length < 8920) {
+            throw new Error("Data length cannot be less than datagram length (8920)");
+        }
+
+        const datagram = new Datagram();
+        let pos = offset;
+
+        // Read version
+        datagram.version = data[pos++];
+
+        // Read flags
+        const flag = data[pos++];
+        datagram.flags = new Array(8);
+        for (let i = 0; i < 8; i++) {
+            datagram.flags[i] = ((flag >> i) & 1) === 1;
+        }
+
+        // Read network, id1, id2 (2 bytes each, little-endian)
+        datagram.network = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+        datagram.id1 = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+        datagram.id2 = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+
+        // Read operation (2 bytes, little-endian)
+        const opCode = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+        if (opCode === 0) {
+            throw new Error("Invalid operation code " + opCode);
+        }
+        datagram.operation = opCode;
+        if (datagram.operation === Operation.Null) {
+            throw new Error("Invalid operation " + datagram.operation);
+        }
+
+        // Read cblock and blocknum (8 bytes each, little-endian)
+        datagram.cblock = this.readBigIntFromBuffer(data, pos, 8);
+        pos += 8;
+        datagram.blocknum = this.readBigIntFromBuffer(data, pos, 8);
+        pos += 8;
+
+        // Read hashes and weight (32 bytes each)
+        datagram.cblockhash = data.slice(pos, pos + 32);
+        pos += 32;
+        datagram.pblockhash = data.slice(pos, pos + 32);
+        pos += 32;
+        datagram.weight = data.slice(pos, pos + 32);
+        pos += 32;
+
+        // Read transaction buffer length (2 bytes, little-endian)
+        datagram.transactionBufferLength = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+
+        // Read addresses (2208 bytes each)
+        datagram.sourceAddress = data.slice(pos, pos + 2208);
+        pos += 2208;
+        datagram.destinationAddress = data.slice(pos, pos + 2208);
+        pos += 2208;
+        datagram.changeAddress = data.slice(pos, pos + 2208);
+        pos += 2208;
+
+        // Read amounts (8 bytes each)
+        datagram.totalSend = data.slice(pos, pos + 8);
+        pos += 8;
+        datagram.totalChange = data.slice(pos, pos + 8);
+        pos += 8;
+        datagram.fee = data.slice(pos, pos + 8);
+        pos += 8;
+
+        // Read signature (2144 bytes)
+        datagram.signature = data.slice(pos, pos + 2144);
+        pos += 2144;
+
+        // Read CRC and trailer (2 bytes each, little-endian)
+        datagram.crc = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+        datagram.trailer = data[pos] | (data[pos + 1] << 8);
+        pos += 2;
+
+        return datagram;
+    }
+
+    private static readBigIntFromBuffer(buffer: Uint8Array, offset: number, length: number): bigint {
+        let value = BigInt(0);
+        for (let i = length - 1; i >= 0; i--) {
+            value = (value << BigInt(8)) | BigInt(buffer[offset + i]);
+        }
+        return value;
+    }
+
+    /**
+     * Compares this datagram with another for equality
+     * @param other - Datagram to compare with
+     * @returns true if datagrams are equal
+     */
+    public equals(other: unknown): boolean {
+        if (this === other) return true;
+        if (!(other instanceof Datagram)) return false;
+
+        // Compare primitive fields
+        if (this.version !== other.version) return false;
+        if (this.network !== other.network) return false;
+        if (this.id1 !== other.id1) return false;
+        if (this.id2 !== other.id2) return false;
+        if (this.operation !== other.operation) return false;
+        if (this.cblock !== other.cblock) return false;
+        if (this.blocknum !== other.blocknum) return false;
+        if (this.transactionBufferLength !== other.transactionBufferLength) return false;
+        if (this.crc !== other.crc) return false;
+        if (this.trailer !== other.trailer) return false;
+
+        // Compare flags array
+        for (let i = 0; i < 8; i++) {
+            if (this.flags[i] !== other.flags[i]) return false;
+        }
+
+        // Compare byte arrays
+        if (!Datagram.areEqual(this.cblockhash, other.cblockhash)) return false;
+        if (!Datagram.areEqual(this.pblockhash, other.pblockhash)) return false;
+        if (!Datagram.areEqual(this.weight, other.weight)) return false;
+        if (!Datagram.areEqual(this.sourceAddress, other.sourceAddress)) return false;
+        if (!Datagram.areEqual(this.destinationAddress, other.destinationAddress)) return false;
+        if (!Datagram.areEqual(this.changeAddress, other.changeAddress)) return false;
+        if (!Datagram.areEqual(this.totalSend, other.totalSend)) return false;
+        if (!Datagram.areEqual(this.totalChange, other.totalChange)) return false;
+        if (!Datagram.areEqual(this.fee, other.fee)) return false;
+        if (!Datagram.areEqual(this.signature, other.signature)) return false;
+
+        return true;
+    }
+    //compare byte arrays
+    private static areEqual(a: Uint8Array, b: Uint8Array): boolean {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+
+
 } 

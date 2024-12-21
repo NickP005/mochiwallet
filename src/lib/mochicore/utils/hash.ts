@@ -1,14 +1,13 @@
-import { SHA256 } from 'crypto-js';
-import { lib } from 'crypto-js';
 
+import CryptoJS from 'crypto-js';
 export function sha256FromString(ascii: string): Uint8Array {
-    const wordArray = SHA256(ascii);
+    const wordArray = CryptoJS.SHA256(ascii);
     return wordArrayToUint8Array(wordArray);
 }
 
 export function sha256FromBytes(bytes: Uint8Array): Uint8Array {
-    const wordArray = lib.WordArray.create(Array.from(bytes));
-    const hash = SHA256(wordArray);
+    const wordArray = CryptoJS.lib.WordArray.create(Array.from(bytes));
+    const hash = CryptoJS.SHA256(wordArray);
     return wordArrayToUint8Array(hash);
 }
 
