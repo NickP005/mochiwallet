@@ -30,6 +30,8 @@ import {
 import { MochimoService } from '@/lib/services/mochimo'
 import { Account, useWallet, useWOTS } from 'mochimo-wallet'
 import { WOTSWallet } from 'mochimo-wots-v2'
+import { SendModal } from './SendModal'
+
 interface AccountViewProps {
   account: Account
   onUpdate: (updated: Account) => void
@@ -50,6 +52,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [checkingActivation, setCheckingActivation] = useState(false)
   const [activating, setActivating] = useState(false)
   const [balance, setBalance] = useState<string | null>(null)
+  const [sendModalOpen, setSendModalOpen] = useState(false)
 
   const w = useWallet()
   // Temporary transactions (we'll implement real data later)
@@ -71,15 +74,19 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   // Check activation status on mount and refresh
   useEffect(() => {
     checkActivation()
+    //check whether the current address matches with the wots index we are using
+
+
+
   }, [account.tag])
 
-  // Format balance to MCM
+  // Format balance to MCM with 9 decimal places
   const formatBalance = (balanceStr: string | null): string => {
-    if (!balanceStr) return '0.00 MCM'
+    if (!balanceStr) return '0.000000000 MCM'
     const balance = BigInt(balanceStr)
-    const whole = balance / BigInt(1e8)
-    const fraction = balance % BigInt(1e8)
-    return `${whole}.${fraction.toString().padStart(8, '0')} MCM`
+    const whole = balance / BigInt(1e9)
+    const fraction = balance % BigInt(1e9)
+    return `${whole}.${fraction.toString().padStart(9, '0')} MCM`
   }
 
   // Check activation status and balance
@@ -91,6 +98,19 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       const isActivated = Boolean(response.success &&
         response.addressConsensus &&
         response.addressConsensus.length > 0)
+        const currentAddress = response.addressConsensus;
+        //deduce current wotsindex from this
+        const currentWotsAddressBeingUsed = await wots.getAddress(account)
+        if(currentAddress !== currentWotsAddressBeingUsed) {
+          console.error('current address does not match with the wots address being used')
+          console.log('current network address', currentAddress)
+          console.log('current wots address being used', currentWotsAddressBeingUsed)
+          console.log('next wots index', account.wotsIndex)
+          const currentWotsIndex = await w.wallet?.deriveWotsIndexFromWotsAddress(account.index, Buffer.from(currentAddress, 'hex'))
+          console.log('current wots index', currentWotsIndex)
+          if(currentWotsIndex!==undefined &&  currentWotsIndex!==null) wots.updateWotsIndex(currentWotsIndex, account)
+          console.log('updated wots index', account.wotsIndex)
+        }
 
       if (isActivated) {
         console.log('Account activation details:', {
@@ -265,6 +285,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               size="lg"
               className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
               disabled={!isActivated}
+              onClick={() => setSendModalOpen(true)}
             >
               <Send className="h-6 w-6" />
               <span>Send</span>
@@ -359,6 +380,12 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
         </div>
       </div>
+
+      <SendModal 
+        isOpen={sendModalOpen}
+        onClose={() => setSendModalOpen(false)}
+        accountIndex={account.index}
+      />
     </div>
   )
 } 
