@@ -6,6 +6,7 @@ import { SecureStorage } from "@/lib/utils/storage"
 import { CreateWallet } from "@/components/wallet/CreateWallet"
 import { UnlockWallet } from "@/components/wallet/UnlockWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
+import { useWallet } from "mochimo-wallet"
 
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard'
 
@@ -14,12 +15,17 @@ export function App() {
   const [loading, setLoading] = useState(true)
   const [wallet, setWallet] = useState<any>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const w = useWallet()
+  console.log(w)
 
   // Check for existing wallet on load
   useEffect(() => {
+
     const checkWallet = async () => {
       try {
-        const hasWallet = await SecureStorage.hasWallet()
+
+        const hasWallet = await w.hasWallet()
+        console.log('hasWallet', hasWallet)
         setView(hasWallet ? 'unlock' : 'welcome')
       } catch (error) {
         console.error('Error checking wallet:', error)
@@ -30,6 +36,7 @@ export function App() {
 
     checkWallet()
   }, [])
+
 
   // Handle successful wallet creation
   const handleWalletCreated = async (newWallet: any) => {
@@ -44,8 +51,7 @@ export function App() {
   }
 
   // Handle successful wallet unlock
-  const handleWalletUnlocked = (unlockedWallet: any, password: string) => {
-    setWallet({ ...unlockedWallet, password })
+  const handleWalletUnlocked = (password: string) => {
     setView('dashboard')
   }
 

@@ -6,8 +6,8 @@ import { Logo } from '@/components/ui/logo'
 import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import * as wots from "@/lib/core/wots"
-import { WalletService } from '@/lib/services/wallet'
+
+import { useWallet } from 'mochimo-wallet'
 
 interface UnlockWalletProps {
   onUnlock: (wallet: any, password: string) => void
@@ -18,14 +18,19 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const w = useWallet()
   const handleUnlock = async () => {
     try {
       setError(null)
       setLoading(true)
       console.log('Attempting to unlock wallet...')
-      const wallet = await SecureStorage.loadWallet(password)
-      console.log('Wallet unlocked successfully')
-      onUnlock(wallet, password)
+      const unlocked = await w.loadWallet(password)
+      if(unlocked) {
+        console.log('Wallet unlocked successfully')
+        onUnlock(w, password)
+      } else {
+        throw new Error('Invalid password')
+      }
     } catch (error) {
       console.error('Error unlocking wallet:', error)
       setError(error instanceof Error ? error.message : 'Failed to unlock wallet')

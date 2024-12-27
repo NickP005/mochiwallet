@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { 
-  Shield, 
-  ShieldOff, 
-  RefreshCcw, 
+import {
+  Shield,
+  ShieldOff,
+  RefreshCcw,
   Loader2,
   Send,
   QrCode,
@@ -26,12 +26,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { WalletCore as WalletService, WalletAccount } from '@/lib/core/wallet'
-import { MochimoService } from '@/lib/services/mochimo'
 
+import { MochimoService } from '@/lib/services/mochimo'
+import { Account, useWallet, useWOTS } from 'mochimo-wallet'
+import { WOTSWallet } from 'mochimo-wots-v2'
 interface AccountViewProps {
-  account: WalletAccount
-  onUpdate: (updated: WalletAccount) => void
+  account: Account
+  onUpdate: (updated: Account) => void
 }
 
 // Temporary transaction type (we'll expand this later)
@@ -50,6 +51,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [activating, setActivating] = useState(false)
   const [balance, setBalance] = useState<string | null>(null)
 
+  const w = useWallet()
   // Temporary transactions (we'll implement real data later)
   const tempTransactions: Transaction[] = [
     {
@@ -65,7 +67,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       address: '8765...4321'
     }
   ]
-
+  const wots = useWOTS()
   // Check activation status on mount and refresh
   useEffect(() => {
     checkActivation()
@@ -84,9 +86,21 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const checkActivation = async () => {
     try {
       setCheckingActivation(true)
-      const response = await WalletService.checkActivationStatus(account)
-      setIsActivated(response)
-      
+      const response = await w.networkService.resolveTag(account.tag)
+      // Account is activated if addressConsensus is not empty
+      const isActivated = Boolean(response.success &&
+        response.addressConsensus &&
+        response.addressConsensus.length > 0)
+
+      if (isActivated) {
+        console.log('Account activation details:', {
+          address: response.addressConsensus,
+          balance: response.balanceConsensus,
+          nodes: response.quorum.map(q => q.node.host)
+        })
+      }
+      setIsActivated(isActivated)
+
       // Update balance if account is activated
       if (response) {
         const tagResponse = await MochimoService.resolveTag(account.tag)
@@ -121,19 +135,21 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const handleActivate = async () => {
     try {
       setActivating(true)
-      const success = await WalletService.activateAccount(account)
-      
-      if (success) {
-        // Check activation status after a short delay to allow for network propagation
-        setTimeout(async () => {
-          await checkActivation()
-          setActivating(false)
-        }, 5000)
-      } else {
+      const success = await wots.activate()
+      setTimeout(async () => {
+        await checkActivation()
+        setActivating(false)
+      }, 5000)
+      try {
+        await wots.activate()
+      } catch (err) {
+        console.error('Error activating account:', err)
+      } finally {
         setActivating(false)
       }
-    } catch (error) {
-      console.error('Error activating account:', error)
+
+    } catch (err) {
+      console.error('Error activating account:', err)
       setActivating(false)
     }
   }
@@ -154,7 +170,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       <div className="flex-1 overflow-auto">
         <div className="p-6 space-y-8 max-w-4xl mx-auto">
           {/* Header Card */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-gradient-to-br from-card to-card/50 rounded-xl p-6 shadow-lg border border-border/50"
@@ -167,7 +183,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   {account.name || `Account ${account.index + 1}`}
                 </h2>
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <TagIcon className="h-4 w-4 text-muted-foreground" />
                 <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90">
@@ -239,7 +255,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
           </motion.div>
 
           {/* Action Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -272,7 +288,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               transition={{ delay: 0.2 }}
               className="flex justify-center"
             >
-              <Button 
+              <Button
                 size="lg"
                 variant="default"
                 onClick={handleActivate}
@@ -315,11 +331,10 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                 <div key={i} className="p-4 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        tx.type === 'receive' 
-                          ? 'bg-green-500/10 text-green-500' 
-                          : 'bg-blue-500/10 text-blue-500'
-                      }`}>
+                      <div className={`p-2 rounded-full ${tx.type === 'receive'
+                        ? 'bg-green-500/10 text-green-500'
+                        : 'bg-blue-500/10 text-blue-500'
+                        }`}>
                         {tx.type === 'receive' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                       </div>
                       <div>
@@ -328,9 +343,8 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-medium ${
-                        tx.type === 'receive' ? 'text-green-500' : 'text-blue-500'
-                      }`}>
+                      <div className={`font-medium ${tx.type === 'receive' ? 'text-green-500' : 'text-blue-500'
+                        }`}>
                         {tx.type === 'receive' ? '+' : '-'}{tx.amount} MCM
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -343,49 +357,6 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
             </div>
           </motion.div>
 
-          {/* Advanced Options */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-6"
-          >
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full flex items-center justify-between"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    <span>Advanced Options</span>
-                  </div>
-                  {showAdvanced ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
-                <div className="rounded-lg border p-4 space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Current Address</label>
-                    <code className="block text-xs bg-muted p-2 rounded break-all">
-                      {account.currentWOTS.publicKey}
-                    </code>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Next Address</label>
-                    <code className="block text-xs bg-muted p-2 rounded break-all">
-                      {account.nextWOTS.publicKey}
-                    </code>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </motion.div>
         </div>
       </div>
     </div>

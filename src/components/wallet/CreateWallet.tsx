@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { WalletCore } from '@/lib/core/wallet'
-import { SecureStorage } from '@/lib/utils/storage'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../ui/logo'
+import { useWallet } from 'mochimo-wallet'
 
 interface CreateWalletProps {
   onWalletCreated: (wallet: any) => void
@@ -16,7 +15,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-
+  const w = useWallet()
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -34,11 +33,10 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
     try {
       setLoading(true)
       console.log('Creating new wallet...')
-      const wallet = WalletCore.createMasterWallet(password)
-      
+
+      const wallet = await w.createWallet(password)
       console.log('Saving wallet...')
-      await SecureStorage.saveWallet(wallet, password)
-      
+
       console.log('Wallet created successfully')
       onWalletCreated(wallet)
     } catch (error) {

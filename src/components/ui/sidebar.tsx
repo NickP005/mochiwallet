@@ -5,13 +5,14 @@ import { Plus } from 'lucide-react'
 import { WalletAccount } from '@/lib/core/wallet'
 import { Avatar, AvatarFallback } from './avatar'
 import { generateColorFromTag, getInitials } from '@/lib/utils/colors'
+import { Account } from 'mochimo-wallet'
 
 interface SidebarProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  accounts: WalletAccount[]
+  accounts: Account[]
   selectedAccount: number | null
-  onSelectAccount: (index: number) => void
+  onSelectAccount: (account: Account) => void
   onCreateAccount: () => void
   onRenameAccount: (index: number, name: string) => void
 }
@@ -83,7 +84,7 @@ export function Sidebar({
                       variant={selectedAccount === account.index ? "secondary" : "ghost"}
                       className="w-full justify-start gap-3"
                       onClick={() => {
-                        onSelectAccount(account.index)
+                        onSelectAccount(account)
                         onOpenChange(false)
                       }}
                     >

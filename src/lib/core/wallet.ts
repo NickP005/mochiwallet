@@ -416,6 +416,7 @@ export class WalletCore {
         address: account.currentWOTS.publicKey.slice(0, 64) + '...'
       })
 
+
       const response = await MochimoService.activateTag(account.currentWOTS.publicKey)
       
       if (response.success) {
