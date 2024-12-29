@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { SecureStorage } from '@/lib/utils/storage'
 import { Logo } from '@/components/ui/logo'
 import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'

@@ -1,7 +1,5 @@
 import { Sidebar } from '@/components/ui/sidebar'
 import { AccountView } from '@/components/wallet/AccountView'
-import { WalletAccount, WalletCore } from '@/lib/core/wallet'
-import { SecureStorage } from '@/lib/utils/storage'
 import { useState, useEffect } from 'react'
 import { HDWallet, useWallet } from 'mochimo-wallet'
 
@@ -18,13 +16,6 @@ export function WalletDashboard({
 }: WalletDashboardProps) {
 
   const [loading, setLoading] = useState(false)
-
-  // Select first account by default
-  // useEffect(() => {
-  //   if (Object.keys(accounts).length > 0 && selectedAccount === null) {
-  //     setSelectedAccount(0)
-  //   }
-  // }, [accounts, selectedAccount])
   const w = useWallet()
   // Create new account
   const handleCreateAccount = async () => {

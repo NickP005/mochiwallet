@@ -92,6 +92,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   // Check activation status and balance
   const checkActivation = async () => {
     try {
+      console.log('checking activation')
       setCheckingActivation(true)
       const response = await w.networkService.resolveTag(account.tag)
       // Account is activated if addressConsensus is not empty
@@ -100,14 +101,21 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         response.addressConsensus.length > 0)
         const currentAddress = response.addressConsensus;
         //deduce current wotsindex from this
+        let t1 = performance.now()
         const currentWotsAddressBeingUsed = await wots.getAddress(account)
+        let t2 = performance.now()
+        console.log('time taken to get wots address', t2 - t1)
+
         if(currentAddress !== currentWotsAddressBeingUsed) {
           console.error('current address does not match with the wots address being used')
           console.log('current network address', currentAddress)
           console.log('current wots address being used', currentWotsAddressBeingUsed)
           console.log('next wots index', account.wotsIndex)
+          const t1 = performance.now()
           const currentWotsIndex = await w.wallet?.deriveWotsIndexFromWotsAddress(account.index, Buffer.from(currentAddress, 'hex'))
+          const t2 = performance.now()
           console.log('current wots index', currentWotsIndex)
+          console.log('time taken', t2 - t1)
           if(currentWotsIndex!==undefined &&  currentWotsIndex!==null) wots.updateWotsIndex(currentWotsIndex, account)
           console.log('updated wots index', account.wotsIndex)
         }
