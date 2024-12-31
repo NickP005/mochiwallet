@@ -69,8 +69,8 @@ importers:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
       mochimo-wallet:
-        specifier: ^0.1.17
-        version: 0.1.17(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^0.1.20
+        version: 0.1.20(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       mochimo-wots-v2:
         specifier: ^0.1.2
         version: 0.1.2
@@ -2355,8 +2355,8 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  mochimo-wallet@0.1.17:
-    resolution: {integrity: sha512-N3d9k+Alee7g1iEEOsXBcRGLzvpjhR/zfikS3LPInI1P28kdheBltV0Vy92wgeegSnLgUewBSrM4xQ6kq0xYTw==}
+  mochimo-wallet@0.1.20:
+    resolution: {integrity: sha512-KZEbv/tLwJW0lyDMmf5WBM57RARVT53gw8qKZE6lo6ubtpeNuYI0st78JGzXWq8aRCpw+uQ5WZ9KpSUF5lExlg==}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
@@ -5655,9 +5655,10 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  mochimo-wallet@0.1.17(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  mochimo-wallet@0.1.20(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@scure/bip39': 1.5.0
+      crypto-js: 4.2.0
       mochimo-wots-v2: 0.1.2
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

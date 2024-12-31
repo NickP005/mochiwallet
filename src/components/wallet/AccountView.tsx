@@ -105,11 +105,11 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         const currentWotsAddressBeingUsed = await wots.getAddress(account)
         let t2 = performance.now()
         console.log('time taken to get wots address', t2 - t1)
+        console.log('current wots address being used', currentWotsAddressBeingUsed)
 
-        if(currentAddress !== currentWotsAddressBeingUsed) {
+        if(currentAddress&& currentAddress !== currentWotsAddressBeingUsed) {
           console.error('current address does not match with the wots address being used')
           console.log('current network address', currentAddress)
-          console.log('current wots address being used', currentWotsAddressBeingUsed)
           console.log('next wots index', account.wotsIndex)
           const t1 = performance.now()
           const currentWotsIndex = await w.wallet?.deriveWotsIndexFromWotsAddress(account.index, Buffer.from(currentAddress, 'hex'))
@@ -163,6 +163,10 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const handleActivate = async () => {
     try {
       setActivating(true)
+      const curr = await wots.getAddress()
+      console.log(
+        'activating with tag:: ', curr
+      )
       const success = await wots.activate()
       setTimeout(async () => {
         await checkActivation()
