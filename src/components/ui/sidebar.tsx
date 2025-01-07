@@ -89,7 +89,7 @@ export function Sidebar({
                               onOpenChange(false)
                             }}
                           >
-                            <AccountAvatar name={accountName} tag={account.tag} className="h-12 w-12" />
+                            <AccountAvatar name={accountName} tag={account.tag} emoji={account.avatar} className="h-12 w-12" />
                             <span className="text-[10px] font-medium truncate w-full text-center">
                               {accountName}
                             </span>
