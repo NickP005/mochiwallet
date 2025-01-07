@@ -12,7 +12,8 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  Smile
+  Smile,
+  Loader2
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -190,14 +191,25 @@ export function ManageAccountsDialog({
 }: ManageAccountsDialogProps) {
   const [view, setView] = useState<View>('list')
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  
   const acc = useAccounts()
-  const [accounts, setAccounts] = useState(acc.accounts)
+  const [tempAccounts, setTempAccounts] = useState(acc.accounts)
   const [balances, setBalances] = useState<Record<string, string>>({})
+
+  // Reset temp accounts when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setTempAccounts(acc.accounts)
+      setHasChanges(false)
+    }
+  }, [isOpen])
 
   // Fetch balances for all accounts
   const fetchBalances = async () => {
     const newBalances: Record<string, string> = {}
-    await Promise.all(accounts.map(async (account) => {
+    await Promise.all(tempAccounts.map(async (account) => {
       try {
         const response = await MochimoService.resolveTag(account.tag)
         if (response.success) {
@@ -209,21 +221,21 @@ export function ManageAccountsDialog({
     }))
     setBalances(newBalances)
   }
-  
+
   useEffect(() => {
     fetchBalances()
-  }, [accounts])
+  }, [tempAccounts])
 
   // Handle account updates
   const handleAccountUpdate = async (tag: string, updates: Partial<Account>) => {
     try {
       await acc.updateAccount(tag, updates)
       // Update both the global accounts and our local state
-      const updatedAccounts = acc.accounts.map(account => 
+      const updatedAccounts = acc.accounts.map(account =>
         account.tag === tag ? { ...account, ...updates } : account
       )
-      setAccounts(updatedAccounts)
-      
+      acc.updateAccount(tag, updates)
+
       // Update selected account if it's the one being modified
       if (selectedAccount && selectedAccount.tag === tag) {
         setSelectedAccount({ ...selectedAccount, ...updates })
@@ -236,7 +248,6 @@ export function ManageAccountsDialog({
   // Handle account deletion
   const handleAccountDelete = async (tag: string) => {
     await acc.deleteAccount(tag)
-    setAccounts(acc.accounts)
     setView('list')
   }
 
@@ -249,10 +260,39 @@ export function ManageAccountsDialog({
       return '0.000000000 MCM'
     }
   }
+  
+  const handleReorder = (newOrder: Account[]) => {
+    setTempAccounts(newOrder)
+    setHasChanges(true)
+  }
+
+  const handleSaveOrder = async () => {
+    try {
+      setIsSaving(true)
+      const newOrderMap = tempAccounts.reduce((acc, account, index) => {
+        acc[account.tag] = index
+        return acc
+      }, {} as Record<string, number>)
+      
+      await acc.reorderAccounts(newOrderMap)
+      setHasChanges(false)
+      onClose()
+    } catch (error) {
+      console.error('Error saving account order:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setTempAccounts(acc.accounts)
+    setHasChanges(false)
+    onClose()
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="h-full max-h-[600px] p-0">
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
+      <DialogContent className="h-full max-h-[600px] p-0 flex flex-col">
         <DialogHeader className="p-4">
           <DialogTitle>Manage Accounts</DialogTitle>
         </DialogHeader>
@@ -267,11 +307,11 @@ export function ManageAccountsDialog({
             >
               <Reorder.Group
                 axis="y"
-                values={accounts}
-                onReorder={setAccounts}
+                values={tempAccounts}
+                onReorder={handleReorder}
                 className="space-y-2"
               >
-                {accounts.map((account) => (
+                {tempAccounts.map((account) => (
                   <Reorder.Item
                     key={account.tag}
                     value={account}
@@ -320,6 +360,32 @@ export function ManageAccountsDialog({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Footer with Save/Cancel buttons */}
+        {view === 'list' && hasChanges && (
+          <div className="border-t p-4 flex justify-end gap-2 bg-background">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveOrder}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Order'
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
