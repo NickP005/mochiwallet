@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { WalletCore } from '@/lib/core/wallet'
-import { SecureStorage } from '@/lib/utils/storage'
+import { useWallet } from 'mochimo-wallet'
+
 
 export function SetupWallet() {
   const [step, setStep] = useState<'password' | 'confirm' | 'mnemonic'>('password')
@@ -11,6 +11,7 @@ export function SetupWallet() {
   const [error, setError] = useState<string | null>(null)
   const [wallet, setWallet] = useState<any>(null)
 
+  const w = useWallet()
   const handleCreateWallet = async () => {
     try {
       if (password.length < 8) {
@@ -30,11 +31,9 @@ export function SetupWallet() {
         }
 
         // Create new wallet
-        const newWallet = WalletCore.createMasterWallet()
+        const newWallet = await w.createWallet(password)
         setWallet(newWallet)
         
-        // Save encrypted wallet
-        await SecureStorage.saveWallet(newWallet, password)
         
         setStep('mnemonic')
       }

@@ -28,8 +28,8 @@ import {
 } from "@/components/ui/collapsible"
 
 import { MochimoService } from '@/lib/services/mochimo'
-import { Account, useWallet, useWOTS } from 'mochimo-wallet'
-import { WOTSWallet } from 'mochimo-wots-v2'
+import { Account, useWallet, MasterSeed, useAccounts, useNetwork } from 'mochimo-wallet'
+
 import { SendModal } from './SendModal'
 
 interface AccountViewProps {
@@ -55,6 +55,8 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [sendModalOpen, setSendModalOpen] = useState(false)
 
   const w = useWallet()
+  const ac = useAccounts()
+  const net = useNetwork()
   // Temporary transactions (we'll implement real data later)
   const tempTransactions: Transaction[] = [
     {
@@ -70,14 +72,12 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       address: '8765...4321'
     }
   ]
-  const wots = useWOTS()
+
+
   // Check activation status on mount and refresh
   useEffect(() => {
     checkActivation()
     //check whether the current address matches with the wots index we are using
-
-
-
   }, [account.tag])
 
   // Format balance to MCM with 9 decimal places
@@ -94,31 +94,31 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     try {
       console.log('checking activation')
       setCheckingActivation(true)
-      const response = await w.networkService.resolveTag(account.tag)
+      const response = await MochimoService.resolveTag(account.tag)
       // Account is activated if addressConsensus is not empty
       const isActivated = Boolean(response.success &&
         response.addressConsensus &&
         response.addressConsensus.length > 0)
-        const currentAddress = response.addressConsensus;
-        //deduce current wotsindex from this
-        let t1 = performance.now()
-        const currentWotsAddressBeingUsed = await wots.getAddress(account)
-        let t2 = performance.now()
-        console.log('time taken to get wots address', t2 - t1)
-        console.log('current wots address being used', currentWotsAddressBeingUsed)
+      const currentAddress = response.addressConsensus;
+      //deduce current wotsindex from this
+      let t1 = performance.now()
+      const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.address
+      let t2 = performance.now()
+      console.log('time taken to get wots address', t2 - t1)
+      console.log('current wots address being used', currentWotsAddressBeingUsed)
 
-        if(currentAddress&& currentAddress !== currentWotsAddressBeingUsed) {
-          console.error('current address does not match with the wots address being used')
-          console.log('current network address', currentAddress)
-          console.log('next wots index', account.wotsIndex)
-          const t1 = performance.now()
-          const currentWotsIndex = await w.wallet?.deriveWotsIndexFromWotsAddress(account.index, Buffer.from(currentAddress, 'hex'))
-          const t2 = performance.now()
-          console.log('current wots index', currentWotsIndex)
-          console.log('time taken', t2 - t1)
-          if(currentWotsIndex!==undefined &&  currentWotsIndex!==null) wots.updateWotsIndex(currentWotsIndex, account)
-          console.log('updated wots index', account.wotsIndex)
-        }
+      if (currentAddress && currentAddress !== currentWotsAddressBeingUsed) {
+        console.error('current address does not match with the wots address being used')
+        console.log('current network address', currentAddress)
+        console.log('next wots index', account.wotsIndex)
+        const t1 = performance.now()
+        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddress(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex'))
+        const t2 = performance.now()
+        console.log('current wots index', currentWotsIndex)
+        console.log('time taken', t2 - t1)
+        if (currentWotsIndex !== undefined && currentWotsIndex !== null) ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
+        console.log('updated wots index', account.wotsIndex)
+      }
 
       if (isActivated) {
         console.log('Account activation details:', {
@@ -163,17 +163,16 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const handleActivate = async () => {
     try {
       setActivating(true)
-      const curr = await wots.getAddress()
+      const curr = ac.currentWOTSKeyPair?.address
       console.log(
         'activating with tag:: ', curr
       )
-      const success = await wots.activate()
       setTimeout(async () => {
         await checkActivation()
         setActivating(false)
       }, 5000)
       try {
-        await wots.activate()
+        await net.activateTag()
       } catch (err) {
         console.error('Error activating account:', err)
       } finally {
@@ -212,7 +211,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">
-                  {account.name || `Account ${account.index + 1}`}
+                  {account.name}
                 </h2>
               </div>
 
@@ -393,10 +392,9 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         </div>
       </div>
 
-      <SendModal 
+      <SendModal
         isOpen={sendModalOpen}
         onClose={() => setSendModalOpen(false)}
-        accountIndex={account.index}
       />
     </div>
   )

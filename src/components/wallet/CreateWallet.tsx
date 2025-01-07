@@ -35,6 +35,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       console.log('Creating new wallet...')
 
       const wallet = await w.createWallet(password)
+      await w.unlockWallet(password)
       console.log('Saving wallet...')
 
       console.log('Wallet created successfully')

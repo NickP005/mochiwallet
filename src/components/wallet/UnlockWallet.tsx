@@ -19,20 +19,15 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
 
   const w = useWallet()
   const handleUnlock = async () => {
+    setError(null)
+    setLoading(true)
     try {
-      setError(null)
-      setLoading(true)
       console.log('Attempting to unlock wallet...')
-      const unlocked = await w.loadWallet(password)
-      if(unlocked) {
-        console.log('Wallet unlocked successfully')
-        onUnlock(w, password)
-      } else {
-        throw new Error('Invalid password')
-      }
+      await w.unlockWallet(password)
+      onUnlock(w, password)
     } catch (error) {
       console.error('Error unlocking wallet:', error)
-      setError(error instanceof Error ? error.message : 'Failed to unlock wallet')
+      setError(error instanceof Error ? error.message : 'Invalid password')
     } finally {
       setLoading(false)
     }
@@ -48,7 +43,7 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
   }, [])
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center min-h-[400px] p-6"
@@ -56,7 +51,7 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
       <motion.div
         initial={{ scale: 0.5 }}
         animate={{ scale: 1 }}
-        transition={{ 
+        transition={{
           type: "spring",
           stiffness: 260,
           damping: 20
@@ -66,7 +61,7 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
         <Logo size="xl" animated className="text-primary" />
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -97,7 +92,7 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
               )}
             />
             <div className="absolute right-3 top-2.5 text-gray-400">
-              {loading ? <Unlock className="w-5 h-5 animate-pulse" /> : 
+              {loading ? <Unlock className="w-5 h-5 animate-pulse" /> :
                 <Lock className="w-5 h-5" />}
             </div>
           </div>
@@ -113,8 +108,8 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
             </motion.div>
           )}
 
-          <Button 
-            onClick={handleUnlock} 
+          <Button
+            onClick={handleUnlock}
             className="w-full"
             disabled={!password || loading}
             size="lg"

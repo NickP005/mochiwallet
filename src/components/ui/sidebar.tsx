@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './button'
 import { Plus } from 'lucide-react'
-import { WalletAccount } from '@/lib/core/wallet'
+
 import { Avatar, AvatarFallback } from './avatar'
 import { generateColorFromTag, getInitials } from '@/lib/utils/colors'
 import { Account } from 'mochimo-wallet'
@@ -11,7 +11,7 @@ interface SidebarProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   accounts: Account[]
-  selectedAccount: number | null
+  selectedAccount: string | null
   onSelectAccount: (account: Account) => void
   onCreateAccount: () => void
   onRenameAccount: (index: number, name: string) => void
@@ -74,14 +74,14 @@ export function Sidebar({
               {/* Accounts List */}
               <div className="space-y-2">
                 {accounts.map((account) => {
-                  const accountName = account.name || `Account ${account.index + 1}`
+                  const accountName = account.name 
                   const initials = getInitials(accountName)
                   const avatarColor = generateColorFromTag(account.tag)
 
                   return (
                     <Button
                       key={account.index}
-                      variant={selectedAccount === account.index ? "secondary" : "ghost"}
+                      variant={selectedAccount === account.tag ? "secondary" : "ghost"}
                       className="w-full justify-start gap-3"
                       onClick={() => {
                         onSelectAccount(account)

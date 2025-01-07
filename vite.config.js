@@ -6,9 +6,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // 'mochimo-wallet': path.resolve(__dirname, '../mochimo-wallet/src')
         }
     },
-    optimizeDeps: {
-        include: ['mochimo-wallet']
-    }
 });

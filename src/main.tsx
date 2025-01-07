@@ -7,17 +7,15 @@ import { App } from './App.tsx'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ThemeProvider } from "@/components/theme-provider"
-import {WalletProvider} from "mochimo-wallet"
+import { MochimoWalletProvider } from "mochimo-wallet"
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider defaultTheme="dark">
       <ErrorBoundary>
-        <WalletProvider>
-          <Provider store={store}>
+        <MochimoWalletProvider>
             <App />
-          </Provider>
-        </WalletProvider>
+        </MochimoWalletProvider>
 
       </ErrorBoundary>
     </ThemeProvider>

@@ -3,13 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useWallet } from 'mochimo-wallet'
+import { useTransaction, useWallet } from 'mochimo-wallet'
 import { CheckCircle2, Loader2, Copy } from 'lucide-react'
 
 interface SendModalProps {
   isOpen: boolean
   onClose: () => void
-  accountIndex: number
+
 }
 
 interface TransactionResponse {
@@ -21,7 +21,7 @@ interface TransactionResponse {
   error?: string
 }
 
-export function SendModal({ isOpen, onClose, accountIndex }: SendModalProps) {
+export function SendModal({ isOpen, onClose }: SendModalProps) {
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export function SendModal({ isOpen, onClose, accountIndex }: SendModalProps) {
   const [success, setSuccess] = useState<{ txid: string } | null>(null)
 
   const w = useWallet()
-
+  const tx = useTransaction()
   const handleSend = async () => {
     try {
       setError(null)
@@ -41,7 +41,7 @@ export function SendModal({ isOpen, onClose, accountIndex }: SendModalProps) {
       }
 
       const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1e9))
-      const result = await w.sendTransaction(recipient, amountBigInt) as TransactionResponse
+      const result = await tx.sendTransaction(recipient, amountBigInt) as TransactionResponse
 
       if (result.status === 'success' && result.data) {
         setSuccess({ txid: result.data.txid })
