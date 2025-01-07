@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2, Tag, User, Coins, Copy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { DecodeResult, MCMDecoder, WOTSEntry } from 'mochimo-wallet'
@@ -32,10 +32,23 @@ const UNAVAILABLE_PREFIX = '420000000e00000001000000'
 interface McmImportDialogProps {
   isOpen: boolean
   onClose: () => void
-  onImportAccounts: (accounts: McmAccount[]) => Promise<void>
+  onImportAccounts: (accounts: ValidatedAccount[]) => Promise<void>
 }
 
 type ImportView = 'upload' | 'password' | 'select'
+
+// Helper function to format MCM balance
+const formatBalance = (balance: string) => {
+  try {
+    const num = BigInt(balance)
+    const whole = num / BigInt(1e9)
+    const fraction = num % BigInt(1e9)
+    const fractionStr = fraction.toString().padStart(9, '0')
+    return `${whole}.${fractionStr}`
+  } catch (error) {
+    return '0.000000000'
+  }
+}
 
 export function McmImportDialog({
   isOpen,
@@ -222,21 +235,48 @@ export function McmImportDialog({
     if (!validation) return null
 
     const badges = {
-      unavailable: { label: 'Unavailable', className: 'bg-yellow-500' },
-      duplicate: { label: 'Duplicate', className: 'bg-red-500' },
-      mismatch: { label: 'Invalid', className: 'bg-red-500' },
-      valid: { label: 'Valid', className: 'bg-green-500' },
-      loading: { label: 'Validating...', className: 'bg-blue-500' }
+      unavailable: { 
+        label: 'Unavailable', 
+        className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
+        icon: AlertTriangle 
+      },
+      duplicate: { 
+        label: 'Duplicate', 
+        className: 'bg-red-500/20 text-red-500 border-red-500/50',
+        icon: AlertCircle 
+      },
+      mismatch: { 
+        label: 'Invalid', 
+        className: 'bg-red-500/20 text-red-500 border-red-500/50',
+        icon: AlertCircle 
+      },
+      valid: { 
+        label: 'Valid', 
+        className: 'bg-green-500/20 text-green-500 border-green-500/50',
+        icon: CheckCircle2 
+      },
+      loading: { 
+        label: 'Validating...', 
+        className: 'bg-blue-500/20 text-blue-500 border-blue-500/50',
+        icon: Loader2 
+      }
     }
 
     const badge = badges[validation.status]
-
+    const Icon = badge.icon
+    
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant="secondary" className={badge.className}>
-            {badge.label}
-          </Badge>
+          <div>
+            <Badge 
+              variant="outline" 
+              className={cn("flex items-center gap-1", badge.className)}
+            >
+              <Icon className="h-3 w-3" />
+              {badge.label}
+            </Badge>
+          </div>
         </TooltipTrigger>
         <TooltipContent>
           {validation.error || 'Account is valid'}
@@ -245,10 +285,101 @@ export function McmImportDialog({
     )
   }
 
+  const renderAccountsList = () => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label>Available Accounts</Label>
+        <p className="text-sm text-muted-foreground">
+          Selected: <span className="font-medium text-foreground">{selectedAccounts.size}</span> of {accounts.length}
+        </p>
+      </div>
+
+      {validating ? (
+        <div className="flex flex-col items-center justify-center py-8 space-y-3 border rounded-lg bg-card">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">
+            Validating {accounts.length} accounts...
+          </p>
+        </div>
+      ) : (
+        <div className="border rounded-lg divide-y max-h-[320px] overflow-y-auto bg-card">
+          {accounts.map((account) => (
+            <div
+              key={`${account.address}-${account.originalIndex}`}
+              className={cn(
+                "flex items-start gap-3 p-4",
+                account.validation?.isValid && "cursor-pointer hover:bg-secondary/50",
+                selectedAccounts.has(account.originalIndex) && "bg-primary/10",
+                !account.validation?.isValid && "opacity-75"
+              )}
+              onClick={() => account.validation?.isValid && toggleAccount(account.originalIndex)}
+            >
+              <div className="pt-1">
+                {account.validation?.isValid && (
+                  <div className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                    selectedAccounts.has(account.originalIndex)
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted-foreground"
+                  )}>
+                    {selectedAccounts.has(account.originalIndex) && (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <p className="font-medium">
+                      {account.name || 'NO NAME'}
+                    </p>
+                  </div>
+                  {getStatusBadge(account.validation)}
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Tag className="h-3.5 w-3.5" />
+                      <span className="font-mono">{account.tag}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(account.tag)
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  {account.validation?.networkBalance && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Coins className="h-3.5 w-3.5" />
+                      <span className="font-mono">
+                        {formatBalance(account.validation.networkBalance)} MCM
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[400px] p-4">
+        <DialogContent className="max-w-[480px] p-4">
           <DialogHeader>
             <DialogTitle>Import MCM Wallet</DialogTitle>
           </DialogHeader>
@@ -344,55 +475,7 @@ export function McmImportDialog({
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4 py-2"
               >
-                <div className="space-y-2">
-                  <Label>Select Accounts to Import</Label>
-
-                  {validating ? (
-                    <div className="flex flex-col items-center justify-center py-8 space-y-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">
-                        Validating {accounts.length} accounts...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg divide-y max-h-[240px] overflow-y-auto">
-                      {accounts.map((account) => (
-                        <div
-                          key={`${account.address}-${account.originalIndex}`}
-                          className={cn(
-                            "flex items-center justify-between p-3",
-                            account.validation?.isValid && "cursor-pointer hover:bg-secondary/50",
-                            selectedAccounts.has(account.originalIndex) && "bg-primary/10",
-                            !account.validation?.isValid && "opacity-75"
-                          )}
-                          onClick={() => account.validation?.isValid && toggleAccount(account.originalIndex)}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{account.name}</p>
-                              {account.isLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                getStatusBadge(account.validation)
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Tag: {account.tag}
-                            </p>
-                            {account.validation?.networkBalance && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Balance: {account.validation.networkBalance} MCM
-                              </p>
-                            )}
-                          </div>
-                          {selectedAccounts.has(account.originalIndex) && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {renderAccountsList()}
 
                 {error && (
                   <div className="flex items-center gap-2 text-sm text-red-500">
@@ -401,25 +484,20 @@ export function McmImportDialog({
                   </div>
                 )}
 
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">
-                    Selected: {selectedAccounts.size} of {accounts.length}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setView('password')}
-                      disabled={loading}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      onClick={handleImport}
-                      disabled={loading || selectedAccounts.size === 0}
-                    >
-                      {loading ? 'Importing...' : 'Import Selected'}
-                    </Button>
-                  </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setView('password')}
+                    disabled={loading}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={loading || selectedAccounts.size === 0}
+                  >
+                    {loading ? 'Importing...' : 'Import Selected'}
+                  </Button>
                 </div>
               </motion.div>
             )}
