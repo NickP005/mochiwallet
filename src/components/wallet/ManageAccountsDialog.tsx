@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   X,
   Smile,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -42,10 +43,18 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [newName, setNewName] = useState(account.name || '')
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleNameUpdate = () => {
+  const handleNameUpdate = async () => {
     if (newName.trim() && newName !== account.name) {
-      onUpdate(account.tag, { name: newName.trim() })
+      try {
+        setIsSaving(true)
+        await onUpdate(account.tag, { name: newName.trim() })
+      } catch (error) {
+        console.error('Error updating account name:', error)
+      } finally {
+        setIsSaving(false)
+      }
     }
   }
 
@@ -55,19 +64,23 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-[460px]">
-      <div className="flex items-center gap-2 py-2">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 h-14 border-b">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
+          className="h-8 w-8 p-0"
         >
-          <X className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h3 className="font-medium">Account Details</h3>
+        <DialogTitle>Account Details</DialogTitle>
+        <div className="w-8" />
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* Avatar Section */}
         <div className="flex flex-col items-center gap-3 py-4">
           <Button
             variant="outline"
@@ -95,6 +108,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
           )}
         </div>
 
+        {/* Account Details Content */}
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Account Name</label>
@@ -103,12 +117,20 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Enter account name"
+                disabled={isSaving}
               />
               <Button
                 onClick={handleNameUpdate}
-                disabled={!newName.trim() || newName === account.name}
+                disabled={!newName.trim() || newName === account.name || isSaving}
               >
-                Save
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  'Save'
+                )}
               </Button>
             </div>
           </div>
@@ -146,7 +168,8 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         </div>
       </div>
 
-      <div className="border-t mt-4 pt-4">
+      {/* Fixed Footer */}
+      <div className="border-t p-4">
         {!showDeleteConfirm ? (
           <Button
             variant="destructive"
@@ -292,10 +315,18 @@ export function ManageAccountsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent className="h-full max-h-[600px] p-0 flex flex-col">
-        <DialogHeader className="p-4">
-          <DialogTitle>Manage Accounts</DialogTitle>
-        </DialogHeader>
+      <DialogContent 
+        className="h-full max-h-[600px] p-0 flex flex-col"
+        showClose={true}
+      >
+        {/* List View Header */}
+        {view === 'list' && (
+          <div className="flex items-center justify-between p-4 h-14 border-b">
+            <div className="w-8" />
+            <DialogTitle className="flex-1 text-center">Manage Accounts</DialogTitle>
+            <div className="w-8" />
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {view === 'list' ? (
@@ -347,7 +378,7 @@ export function ManageAccountsDialog({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex-1 overflow-y-auto p-4"
+              className="flex-1"
             >
               {selectedAccount && (
                 <DetailView
