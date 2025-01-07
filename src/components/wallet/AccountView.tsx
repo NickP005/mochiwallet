@@ -117,7 +117,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         console.log('current wots index', currentWotsIndex)
         console.log('time taken', t2 - t1)
         if (currentWotsIndex !== undefined && currentWotsIndex !== null) ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
-        console.log('updated wots index', account.wotsIndex)
+        console.log('updated wots index', currentWotsIndex)
       }
 
       if (isActivated) {

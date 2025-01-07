@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useTransaction, useWallet } from 'mochimo-wallet'
+import { useTransaction, useWallet, useAccounts } from 'mochimo-wallet'
 import { CheckCircle2, Loader2, Copy } from 'lucide-react'
 
 interface SendModalProps {
@@ -30,7 +30,12 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
 
   const w = useWallet()
   const tx = useTransaction()
+  const ac = useAccounts()
   const handleSend = async () => {
+    const currAccount = ac.accounts.find(a => a.tag === ac.selectedAccount!)
+    if (!currAccount) {
+      throw new Error('Current account not found')
+    }
     try {
       setError(null)
       setSuccess(null)
@@ -43,7 +48,8 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
       const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1e9))
       const result = await tx.sendTransaction(recipient, amountBigInt) as TransactionResponse
 
-      if (result.status === 'success' && result.data) {
+      if (result.status === 'success' && result.data && ac.selectedAccount) {
+        await ac.updateAccount(ac.selectedAccount, { wotsIndex: currAccount.wotsIndex + 1 })
         setSuccess({ txid: result.data.txid })
       } else {
         throw new Error(result.error || 'Transaction failed')
@@ -107,9 +113,9 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                   </Button>
                 </div>
               </div>
-              <Button 
+              <Button
                 size="sm"
-                className="mt-2 w-full" 
+                className="mt-2 w-full"
                 onClick={handleClose}
               >
                 Close
@@ -149,15 +155,15 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
               )}
 
               <div className="flex justify-end gap-2 mt-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={handleClose} 
+                  onClick={handleClose}
                   disabled={sending}
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   size="sm"
                   onClick={handleSend}
                   disabled={sending || !recipient || !amount}
