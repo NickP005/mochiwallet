@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './button'
-import { Plus } from 'lucide-react'
-
+import { Plus, Settings, Edit2 } from 'lucide-react'
 import { Avatar, AvatarFallback } from './avatar'
 import { generateColorFromTag, getInitials } from '@/lib/utils/colors'
 import { Account } from 'mochimo-wallet'
+import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './tooltip'
 
 interface SidebarProps {
   isOpen: boolean
@@ -14,7 +15,8 @@ interface SidebarProps {
   selectedAccount: string | null
   onSelectAccount: (account: Account) => void
   onCreateAccount: () => void
-  onRenameAccount: (index: number, name: string) => void
+  onManageAccounts: () => void
+  onOpenSettings: () => void
 }
 
 export function Sidebar({
@@ -24,16 +26,9 @@ export function Sidebar({
   selectedAccount,
   onSelectAccount,
   onCreateAccount,
-  onRenameAccount
+  onManageAccounts,
+  onOpenSettings
 }: SidebarProps) {
-  // Add debug logging
-  console.log('Sidebar render:', { isOpen, accountsCount: accounts.length })
-
-  useEffect(() => {
-    console.log('Sidebar isOpen changed:', isOpen)
-  }, [isOpen])
-
-  // Close sidebar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('sidebar')
@@ -51,75 +46,128 @@ export function Sidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/20 z-10"
-            onClick={() => onOpenChange(false)}
-          />
+        <TooltipProvider>
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/20 z-10"
+              onClick={() => onOpenChange(false)}
+            />
 
-          {/* Sidebar */}
-          <motion.div
-            id="sidebar"
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-            className="absolute inset-y-0 left-0 w-64 bg-background border-r z-20"
-          >
-            <div className="h-full p-4 space-y-4">
-              {/* Accounts List */}
-              <div className="space-y-2">
-                {accounts.map((account) => {
-                  const accountName = account.name 
-                  const initials = getInitials(accountName)
-                  const avatarColor = generateColorFromTag(account.tag)
+            {/* Sidebar */}
+            <motion.div
+              id="sidebar"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+              className="absolute inset-y-0 left-0 w-24 bg-background border-r z-20 flex flex-col"
+            >
+              {/* Accounts List - Scrollable */}
+              <div className="flex-1 min-h-0 py-2">
+                <div className="h-full overflow-y-auto px-1.5 space-y-1 scrollbar-thin scrollbar-thumb-secondary">
+                  {accounts.map((account) => {
+                    const accountName = account.name || `Account ${account.index + 1}`
+                    const initials = getInitials(accountName)
+                    const avatarColor = generateColorFromTag(account.tag)
 
-                  return (
-                    <Button
-                      key={account.index}
-                      variant={selectedAccount === account.tag ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-3"
-                      onClick={() => {
-                        onSelectAccount(account)
-                        onOpenChange(false)
-                      }}
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback 
-                          style={{ 
-                            backgroundColor: avatarColor,
-                            color: 'white',
-                            fontSize: '0.875rem',
-                            fontWeight: 500
-                          }}
-                        >
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="truncate">
-                        {accountName}
-                      </div>
-                    </Button>
-                  )
-                })}
+                    return (
+                      <Tooltip key={account.index} delayDuration={200}>
+                        <TooltipTrigger asChild>
+                          <button
+                            className={cn(
+                              "w-full flex flex-col items-center gap-0.5 p-1 rounded-lg transition-colors",
+                              selectedAccount === account.tag
+                                ? "bg-primary/10 ring-1 ring-primary/20"
+                                : "hover:bg-secondary/50"
+                            )}
+                            onClick={() => {
+                              onSelectAccount(account)
+                              onOpenChange(false)
+                            }}
+                          >
+                            <Avatar className="h-12 w-12">
+                              <AvatarFallback
+                                style={{
+                                  backgroundColor: avatarColor,
+                                  color: 'white',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 500
+                                }}
+                              >
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-[10px] font-medium truncate w-full text-center">
+                              {accountName}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          {accountName}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
               </div>
 
-              {/* Add Account Button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onCreateAccount}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Account
-              </Button>
-            </div>
-          </motion.div>
-        </>
+              {/* Bottom Actions - Vertical */}
+              <div className="p-1.5 border-t flex flex-col items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onCreateAccount}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    New Account
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onManageAccounts}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    Manage Accounts
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onOpenSettings}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    Settings
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </motion.div>
+          </>
+        </TooltipProvider>
       )}
     </AnimatePresence>
   )

@@ -57,6 +57,12 @@ export function WalletDashboard({
     }
   }
   const accounts = acc.accounts
+
+  const handleOpenSettings = () => {
+    // TODO: Implement settings
+    console.log('Open settings')
+  }
+
   return (
     <div className="h-full flex">
       <Sidebar
@@ -64,7 +70,8 @@ export function WalletDashboard({
         selectedAccount={acc.selectedAccount}
         onSelectAccount={a=>acc.setSelectedAccount(a.tag)}
         onCreateAccount={handleCreateAccount}
-        onRenameAccount={handleRenameAccount}
+        onManageAccounts={() => setManageAccountsOpen(true)}
+        onOpenSettings={handleOpenSettings}
         isOpen={sidebarOpen}
         onOpenChange={onSidebarOpenChange}
       />
