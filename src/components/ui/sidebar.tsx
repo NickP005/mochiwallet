@@ -7,6 +7,7 @@ import { generateColorFromTag, getInitials } from '@/lib/utils/colors'
 import { Account } from 'mochimo-wallet'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './tooltip'
+import { AccountAvatar } from './account-avatar'
 
 interface SidebarProps {
   isOpen: boolean
@@ -70,9 +71,8 @@ export function Sidebar({
               <div className="flex-1 min-h-0 py-2">
                 <div className="h-full overflow-y-auto px-1.5 space-y-1 scrollbar-thin scrollbar-thumb-secondary">
                   {accounts.map((account) => {
-                    const accountName = account.name || `Account ${account.index + 1}`
-                    const initials = getInitials(accountName)
-                    const avatarColor = generateColorFromTag(account.tag)
+                    const accountName = account.name 
+
 
                     return (
                       <Tooltip key={account.index} delayDuration={200}>
@@ -89,18 +89,7 @@ export function Sidebar({
                               onOpenChange(false)
                             }}
                           >
-                            <Avatar className="h-12 w-12">
-                              <AvatarFallback
-                                style={{
-                                  backgroundColor: avatarColor,
-                                  color: 'white',
-                                  fontSize: '0.875rem',
-                                  fontWeight: 500
-                                }}
-                              >
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
+                            <AccountAvatar name={accountName} tag={account.tag} className="h-12 w-12" />
                             <span className="text-[10px] font-medium truncate w-full text-center">
                               {accountName}
                             </span>

@@ -3,6 +3,7 @@ import { AccountView } from '@/components/wallet/AccountView'
 import { useState, useEffect } from 'react'
 import { HDWallet, useWallet, useAccounts } from 'mochimo-wallet'
 import { AddAccountDialog } from './AddAccountDialog'
+import { ManageAccountsDialog } from './ManageAccountsDialog'
 
 interface WalletDashboardProps {
   wallet: HDWallet
@@ -99,6 +100,11 @@ export function WalletDashboard({
         onClose={() => setAddAccountOpen(false)}
         onCreateAccount={handleCreateAccount}
         onImportAccount={handleImportAccount}
+      />
+
+      <ManageAccountsDialog
+        isOpen={manageAccountsOpen}
+        onClose={() => setManageAccountsOpen(false)}
       />
 
       <main className="flex-1 h-full overflow-auto">

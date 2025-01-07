@@ -1,0 +1,326 @@
+import { useEffect, useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  GripVertical,
+  ChevronRight,
+  Coins,
+  Tag as TagIcon,
+  Eye,
+  EyeOff,
+  Trash2,
+  AlertTriangle,
+  X,
+  Smile
+} from 'lucide-react'
+import { motion, AnimatePresence, Reorder } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import { Account, useAccounts } from 'mochimo-wallet'
+import { MochimoService } from '@/lib/services/mochimo'
+import EmojiPicker from 'emoji-picker-react'
+import { getInitials } from '@/lib/utils/colors'
+import { AccountAvatar } from '../ui/account-avatar'
+
+interface ManageAccountsDialogProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+type View = 'list' | 'detail'
+
+interface DetailViewProps {
+  account: Account
+  onBack: () => void
+  onUpdate: (tag: string, updates: Partial<Account>) => void
+  onDelete: (tag: string) => void
+}
+
+function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
+  const [showSecret, setShowSecret] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [newName, setNewName] = useState(account.name || '')
+
+  const handleNameUpdate = () => {
+    if (newName.trim() && newName !== account.name) {
+      onUpdate(account.tag, { name: newName.trim() })
+    }
+  }
+
+  const handleEmojiSelect = (emoji: any) => {
+    onUpdate(account.tag, { avatar: emoji.emoji })
+    setShowEmojiPicker(false)
+  }
+
+  return (
+    <div className="flex flex-col h-[460px]">
+      <div className="flex items-center gap-2 py-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <h3 className="font-medium">Account Details</h3>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pr-2">
+        <div className="flex flex-col items-center gap-3 py-4">
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-20 w-20 text-3xl relative"
+            onClick={() => setShowEmojiPicker(true)}
+          >
+            {account.avatar || getInitials(account.name || '')}
+            <div className="absolute bottom-1 right-1">
+              <Smile className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Button>
+          {showEmojiPicker && (
+            <div className="absolute z-50">
+              <div
+                className="fixed inset-0"
+                onClick={() => setShowEmojiPicker(false)}
+              />
+              <EmojiPicker
+                onEmojiClick={handleEmojiSelect}
+                width={320}
+                height={400}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Account Name</label>
+            <div className="flex gap-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Enter account name"
+              />
+              <Button
+                onClick={handleNameUpdate}
+                disabled={!newName.trim() || newName === account.name}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Tag</span>
+              <code className="bg-muted px-2 py-0.5 rounded">{account.tag}</code>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Index</span>
+              <span>{account.index}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => setShowSecret(!showSecret)}
+            >
+              <span>Show Secret Phrase</span>
+              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            {showSecret && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-muted/50 p-3 rounded-lg"
+              >
+                <code className="text-xs break-all">{account.seed}</code>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t mt-4 pt-4">
+        {!showDeleteConfirm ? (
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Remove Account
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <p className="text-sm font-medium">Are you sure?</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => onDelete(account.tag)}
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function ManageAccountsDialog({
+  isOpen,
+  onClose
+}: ManageAccountsDialogProps) {
+  const [view, setView] = useState<View>('list')
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const acc = useAccounts()
+  const [accounts, setAccounts] = useState(acc.accounts)
+  const [balances, setBalances] = useState<Record<string, string>>({})
+
+  // Fetch balances for all accounts
+  const fetchBalances = async () => {
+    const newBalances: Record<string, string> = {}
+    await Promise.all(accounts.map(async (account) => {
+      try {
+        const response = await MochimoService.resolveTag(account.tag)
+        if (response.success) {
+          newBalances[account.tag] = response.balanceConsensus
+        }
+      } catch (error) {
+        console.error(`Error fetching balance for ${account.tag}:`, error)
+      }
+    }))
+    setBalances(newBalances)
+  }
+  
+  useEffect(() => {
+    fetchBalances()
+  }, [accounts])
+
+  // Handle account updates
+  const handleAccountUpdate = async (tag: string, updates: Partial<Account>) => {
+    try {
+      await acc.updateAccount(tag, updates)
+      // Update both the global accounts and our local state
+      const updatedAccounts = acc.accounts.map(account => 
+        account.tag === tag ? { ...account, ...updates } : account
+      )
+      setAccounts(updatedAccounts)
+      
+      // Update selected account if it's the one being modified
+      if (selectedAccount && selectedAccount.tag === tag) {
+        setSelectedAccount({ ...selectedAccount, ...updates })
+      }
+    } catch (error) {
+      console.error('Error updating account:', error)
+    }
+  }
+
+  // Handle account deletion
+  const handleAccountDelete = async (tag: string) => {
+    await acc.deleteAccount(tag)
+    setAccounts(acc.accounts)
+    setView('list')
+  }
+
+  // Format balance
+  const formatBalance = (balance: string) => {
+    try {
+      const num = BigInt(balance)
+      return `${num / BigInt(1e9)}.${(num % BigInt(1e9)).toString().padStart(9, '0')} MCM`
+    } catch {
+      return '0.000000000 MCM'
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="h-full max-h-[600px] p-0">
+        <DialogHeader className="p-4">
+          <DialogTitle>Manage Accounts</DialogTitle>
+        </DialogHeader>
+
+        <AnimatePresence mode="wait">
+          {view === 'list' ? (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex-1 overflow-y-auto p-4"
+            >
+              <Reorder.Group
+                axis="y"
+                values={accounts}
+                onReorder={setAccounts}
+                className="space-y-2"
+              >
+                {accounts.map((account) => (
+                  <Reorder.Item
+                    key={account.tag}
+                    value={account}
+                    className="bg-card rounded-lg border"
+                  >
+                    <div className="flex items-center p-3 gap-3">
+                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                      <div
+                        className="flex-1 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded p-2"
+                        onClick={() => {
+                          setSelectedAccount(account)
+                          setView('detail')
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <AccountAvatar name={account.name || ''} emoji={account.avatar} tag={account.tag} />
+                          <div>
+                            <p className="font-medium">{account.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {balances[account.tag] ? formatBalance(balances[account.tag]) : 'Loading...'}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex-1 overflow-y-auto p-4"
+            >
+              {selectedAccount && (
+                <DetailView
+                  account={selectedAccount}
+                  onBack={() => setView('list')}
+                  onUpdate={handleAccountUpdate}
+                  onDelete={handleAccountDelete}
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </DialogContent>
+    </Dialog>
+  )
+} 
