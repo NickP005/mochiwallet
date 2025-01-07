@@ -19,7 +19,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Wallet,
-  Hash
+  Hash,
+  Coins
 } from 'lucide-react'
 import {
   Collapsible,
@@ -267,7 +268,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               <div className="flex items-baseline gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Hash className="h-4 w-4" />
+                    <Coins className="h-4 w-4" />
                     <span>Available Balance</span>
                   </div>
                   <div className="font-mono">
