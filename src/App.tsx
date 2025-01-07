@@ -6,11 +6,12 @@ import { useEffect, useState } from "react"
 import { CreateWallet } from "@/components/wallet/CreateWallet"
 import { UnlockWallet } from "@/components/wallet/UnlockWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
-import { useWallet } from "mochimo-wallet"
+import { NetworkProvider, ProxyNetworkService, StorageProvider, useWallet } from "mochimo-wallet"
 
 
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard'
-
+const network = new ProxyNetworkService('http://localhost:9000/api')
+NetworkProvider.setNetwork(network)
 export function App() {
   const [view, setView] = useState<WalletView>('welcome')
   const [loading, setLoading] = useState(true)
