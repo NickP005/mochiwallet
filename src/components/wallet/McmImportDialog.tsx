@@ -32,7 +32,7 @@ const UNAVAILABLE_PREFIX = '420000000e00000001000000'
 interface McmImportDialogProps {
   isOpen: boolean
   onClose: () => void
-  onImportAccounts: (accounts: ValidatedAccount[]) => Promise<void>
+  onImportAccounts: (accounts: ValidatedAccount[], mcmData: DecodeResult) => Promise<void>
 }
 
 type ImportView = 'upload' | 'password' | 'select'
@@ -64,6 +64,7 @@ export function McmImportDialog({
   const [loading, setLoading] = useState(false)
   const acc = useAccounts()
   const [validating, setValidating] = useState(false)
+  const [mcmData, setMcmData] = useState<DecodeResult | null>(null)
 
   // Validate all accounts at once
   const validateAccounts = async (accountsToValidate: ValidatedAccount[]) => {
@@ -176,7 +177,7 @@ export function McmImportDialog({
 
       const fileBuffer = await selectedFile.arrayBuffer()
       const decodedAccounts = await MCMDecoder.decode(Buffer.from(fileBuffer), password)
-
+      setMcmData(decodedAccounts)
       // Map entries and add tag and original index
       const accountsWithTags = decodedAccounts.entries.map((entry, index) => ({
         ...entry,
@@ -205,7 +206,10 @@ export function McmImportDialog({
       setError(null)
 
       const accountsToImport = accounts.filter((acc, index) => selectedAccounts.has(index))
-      await onImportAccounts(accountsToImport)
+      if (!mcmData) {
+        throw new Error('No MCM data available')
+      }
+      await onImportAccounts(accountsToImport, mcmData)
       handleClose()
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to import accounts')

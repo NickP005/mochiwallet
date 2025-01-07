@@ -7,6 +7,8 @@ import { Plus, Upload, Wallet } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { McmImportDialog } from './McmImportDialog'
+import { useWallet } from 'mochimo-wallet'
+
 
 interface AddAccountDialogProps {
   isOpen: boolean
@@ -37,6 +39,7 @@ export function AddAccountDialog({
     setError(null)
     onClose()
   }
+  const wallet = useWallet()
 
   const handleCreateSubmit = async () => {
     if (!accountName.trim()) {
@@ -241,11 +244,12 @@ export function AddAccountDialog({
       <McmImportDialog
         isOpen={mcmImportOpen}
         onClose={() => setMcmImportOpen(false)}
-        onImportAccounts={async (accounts) => {
-          // Handle multiple account import
-          for (const account of accounts) {
-            await onImportAccount(account)
-          }
+        onImportAccounts={async (accounts, mcmData) => {
+          console.log(accounts) 
+          const indicesToImport = new Set(accounts.filter(account => account.validation?.isValid).map(account => account.originalIndex))
+          await wallet.importAccountsFromMcm(mcmData, (index) => {
+            return indicesToImport.has(index)
+          })
         }}
       />
     </>
