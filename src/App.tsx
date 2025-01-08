@@ -5,11 +5,12 @@ import { useEffect, useState } from "react"
 
 import { CreateWallet } from "@/components/wallet/CreateWallet"
 import { UnlockWallet } from "@/components/wallet/UnlockWallet"
+import { ImportWallet } from "@/components/wallet/ImportWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
 import { NetworkProvider, ProxyNetworkService, StorageProvider, useWallet } from "mochimo-wallet"
 
 
-type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard'
+type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import'
 const network = new ProxyNetworkService('http://localhost:9000/api')
 NetworkProvider.setNetwork(network)
 export function App() {
@@ -57,6 +58,16 @@ export function App() {
     setView('dashboard')
   }
 
+  // Add handler for successful import
+  const handleWalletImported = async (wallet: any) => {
+    try {
+      setWallet(wallet)
+      setView('dashboard')
+    } catch (error) {
+      console.error('Error handling wallet import:', error)
+    }
+  }
+
   if (loading) {
     return (
       <WalletLayout>
@@ -86,7 +97,7 @@ export function App() {
                 className="w-full" 
                 variant="outline" 
                 size="lg"
-                onClick={() => setView('unlock')}
+                onClick={() => setView('import')}
               >
                 <Import className="mr-2" />
                 Import Existing Wallet
@@ -120,6 +131,16 @@ export function App() {
             wallet={wallet} 
             sidebarOpen={sidebarOpen} 
             onSidebarOpenChange={setSidebarOpen} 
+          />
+        </WalletLayout>
+      )
+
+    case 'import':
+      return (
+        <WalletLayout>
+          <ImportWallet 
+            onWalletImported={handleWalletImported}
+            onBack={() => setView('welcome')}
           />
         </WalletLayout>
       )
