@@ -73,6 +73,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
   const handleRefreshMnemonic = async () => {
     try {
       setLoading(true)
+      if (masterSeed) masterSeed.lock()
       const ms = await MasterSeed.create()
       setMasterSeed(ms)
       setMnemonic(await ms.toPhrase())
