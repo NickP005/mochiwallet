@@ -8,6 +8,8 @@ import { UnlockWallet } from "@/components/wallet/UnlockWallet"
 import { ImportWallet } from "@/components/wallet/ImportWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
 import { NetworkProvider, ProxyNetworkService, StorageProvider, useWallet } from "mochimo-wallet"
+import { motion } from "framer-motion"
+import { Logo } from "./components/ui/logo"
 
 
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import'
@@ -28,7 +30,7 @@ export function App() {
       try {
 
         const hasWallet = await w.checkWallet()
- 
+
         setView(hasWallet ? 'unlock' : 'welcome')
       } catch (error) {
         console.error('Error checking wallet:', error)
@@ -83,19 +85,31 @@ export function App() {
       return (
         <WalletLayout>
           <div className="flex flex-col items-center justify-center h-full gap-4">
+            <motion.div
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 20
+              }}
+              className="mb-8"
+            >
+              <Logo size="xl" animated className="text-primary" />
+            </motion.div>
             <h2 className="text-2xl font-bold text-center mb-8">Welcome to Mochimo</h2>
             <div className="flex flex-col w-full max-w-xs gap-4">
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 size="lg"
                 onClick={() => setView('create')}
               >
                 <PlusCircle className="mr-2" />
                 Create New Wallet
               </Button>
-              <Button 
-                className="w-full" 
-                variant="outline" 
+              <Button
+                className="w-full"
+                variant="outline"
                 size="lg"
                 onClick={() => setView('import')}
               >
@@ -123,14 +137,14 @@ export function App() {
 
     case 'dashboard':
       return (
-        <WalletLayout 
-          showMenu 
+        <WalletLayout
+          showMenu
           onMenuClick={() => setSidebarOpen(true)}
         >
-          <WalletDashboard 
-            wallet={wallet} 
-            sidebarOpen={sidebarOpen} 
-            onSidebarOpenChange={setSidebarOpen} 
+          <WalletDashboard
+            wallet={wallet}
+            sidebarOpen={sidebarOpen}
+            onSidebarOpenChange={setSidebarOpen}
           />
         </WalletLayout>
       )
@@ -138,7 +152,7 @@ export function App() {
     case 'import':
       return (
         <WalletLayout>
-          <ImportWallet 
+          <ImportWallet
             onWalletImported={handleWalletImported}
             onBack={() => setView('welcome')}
           />
