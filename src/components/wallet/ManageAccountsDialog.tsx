@@ -23,6 +23,7 @@ import { MochimoService } from '@/lib/services/mochimo'
 import EmojiPicker from 'emoji-picker-react'
 import { getInitials } from '@/lib/utils/colors'
 import { AccountAvatar } from '../ui/account-avatar'
+import { useTheme } from "@/components/theme-provider"
 
 interface ManageAccountsDialogProps {
   isOpen: boolean
@@ -44,6 +45,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [newName, setNewName] = useState(account.name || '')
   const [isSaving, setIsSaving] = useState(false)
+  const { theme } = useTheme()
 
   const handleNameUpdate = async () => {
     if (newName.trim() && newName !== account.name) {
@@ -103,6 +105,10 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                 onEmojiClick={handleEmojiSelect}
                 width={320}
                 height={400}
+                theme={theme === 'dark' ? 'dark' : 'light'}
+                skinTonesDisabled
+                searchDisabled
+                lazyLoadEmojis
               />
             </div>
           )}
