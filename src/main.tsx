@@ -8,13 +8,16 @@ import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ThemeProvider } from "@/components/theme-provider"
 import { MochimoWalletProvider } from "mochimo-wallet"
+import { TooltipProvider } from '@radix-ui/react-tooltip'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider defaultTheme="dark">
       <ErrorBoundary>
         <MochimoWalletProvider>
+          <TooltipProvider>
             <App />
+          </TooltipProvider>
         </MochimoWalletProvider>
 
       </ErrorBoundary>

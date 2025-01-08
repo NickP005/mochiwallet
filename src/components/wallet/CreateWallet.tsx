@@ -3,20 +3,26 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../ui/logo'
-import { useWallet } from 'mochimo-wallet'
+import { MasterSeed, useAccounts, useWallet } from 'mochimo-wallet'
+import { MnemonicBackup } from './MnemonicBackup'
 
 interface CreateWalletProps {
   onWalletCreated: (wallet: any) => void
 }
 
 export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
+  const [step, setStep] = useState<'password' | 'backup'>('password')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [masterSeed, setMasterSeed] = useState<MasterSeed | null>(null)
+  const [mnemonic, setMnemonic] = useState<string>('')
+
   const w = useWallet()
-  const handleSubmit = async (e: React.FormEvent) => {
+  const ac = useAccounts()
+  const handleCreateWallet = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -33,19 +39,60 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
     try {
       setLoading(true)
       console.log('Creating new wallet...')
-
-      const wallet = await w.createWallet(password)
-      await w.unlockWallet(password)
-      console.log('Saving wallet...')
-
-      console.log('Wallet created successfully')
-      onWalletCreated(wallet)
+      const ms = await MasterSeed.create()
+      setMasterSeed(ms)
+      setMnemonic(await ms.toPhrase())
+      setStep('backup')
     } catch (error) {
       console.error('Error creating wallet:', error)
       setError('Failed to create wallet')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBackupComplete = async () => {
+    try {
+      setLoading(true)
+      if (!masterSeed) throw new Error('No master seed')
+
+      const wallet = await w.createWallet(password, await masterSeed.toPhrase())
+
+      await w.unlockWallet(password)
+      //create a first account
+      const a = await ac.createAccount("Account 1")
+      ac.setSelectedAccount(a.tag)
+      onWalletCreated(wallet)
+    } catch (error) {
+      console.error('Error saving wallet:', error)
+      setError('Failed to save wallet')
+      setLoading(false)
+    }
+  }
+
+  const handleRefreshMnemonic = async () => {
+    try {
+      setLoading(true)
+      const ms = await MasterSeed.create()
+      setMasterSeed(ms)
+      setMnemonic(await ms.toPhrase())
+    } catch (error) {
+      console.error('Error regenerating mnemonic:', error)
+      setError('Failed to generate new recovery phrase')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (step === 'backup') {
+    return (
+      <MnemonicBackup
+        mnemonic={mnemonic}
+        onComplete={handleBackupComplete}
+        onBack={() => setStep('password')}
+        onRefreshMnemonic={handleRefreshMnemonic}
+      />
+    )
   }
 
   return (
@@ -61,7 +108,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleCreateWallet} className="space-y-6">
           <div className="space-y-4">
             {/* Password Input */}
             <div className="space-y-2">
