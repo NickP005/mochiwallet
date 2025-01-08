@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2, Tag, User, Coins, Copy } from 'lucide-react'
+import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2, Tag, User, Coins, Copy, Wallet } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { DecodeResult, MCMDecoder, WOTSEntry } from 'mochimo-wallet'
@@ -336,7 +336,7 @@ export function McmImportDialog({
               <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">
                       {account.name || 'NO NAME'}
                     </p>
@@ -383,7 +383,7 @@ export function McmImportDialog({
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[480px] p-4">
+        <DialogContent className="max-w-[340px] p-4">
           <DialogHeader>
             <DialogTitle>Import MCM Wallet</DialogTitle>
           </DialogHeader>
