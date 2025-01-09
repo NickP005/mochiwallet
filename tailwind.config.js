@@ -19,10 +19,10 @@ module.exports = {
   	},
   	extend: {
   		fontFamily: {
-  			sans: [
-  				'var(--font-sans)',
-                    ...fontFamily.sans
-                ]
+  			sans: ['Montserrat', ...fontFamily.sans],
+  			secondary: ['Poppins', ...fontFamily.sans],
+  			montserrat: ['Montserrat', ...fontFamily.sans],
+  			poppins: ['Poppins', ...fontFamily.sans],
   		},
   		keyframes: {
   			'accordion-down': {
@@ -73,13 +73,25 @@ module.exports = {
   				foreground: 'hsl(var(--popover-foreground))'
   			},
   			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				DEFAULT: '#15DC96',
+  				dark: '#1D2A2E',
+  				light: '#FFFFFF',
   			},
   			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
+  				DEFAULT: '#10B078',
+  				dark: '#172124',
+  				light: '#DDDDDD',
   			},
+  			brand: {
+  				mint: '#15DC96',
+  				forest: '#10B078',
+  				charcoal: '#1D2A2E',
+  				slate: '#172124',
+  			},
+  			success: '#15DC96',
+  			warning: '#FFB547',
+  			error: '#FF4747',
+  			info: '#47B0FF',
   			muted: {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'

@@ -31,7 +31,7 @@ export function WalletLayout({
           ) : (
             <div className="w-8" />
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <Logo size="sm" />
             <h1 className="text-lg font-semibold">Mochimo Wallet</h1>
           </div>
