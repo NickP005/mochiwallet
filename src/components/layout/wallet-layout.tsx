@@ -1,8 +1,11 @@
 import { ReactNode } from 'react'
-import { Menu } from 'lucide-react'
+import { Menu, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useViewMode } from '@/lib/contexts/ViewModeContext'
+import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface WalletLayoutProps {
   children: ReactNode
@@ -15,8 +18,13 @@ export function WalletLayout({
   showMenu = false, 
   onMenuClick 
 }: WalletLayoutProps) {
+  const { viewMode, toggleViewMode, isExtension } = useViewMode()
+  
   return (
-    <div className="flex flex-col h-[600px] bg-background">
+    <div className={cn(
+      "flex flex-col bg-background",
+      viewMode === 'popup' ? 'h-[600px]' : 'h-screen'
+    )}>
       {/* Fixed Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
@@ -42,7 +50,30 @@ export function WalletLayout({
             </h1>
           </div>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          {isExtension && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleViewMode}
+                  className="hover:bg-primary/10"
+                >
+                  {viewMode === 'popup' ? (
+                    <Maximize2 className="h-4 w-4 text-foreground/80" />
+                  ) : (
+                    <Minimize2 className="h-4 w-4 text-foreground/80" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{viewMode === 'popup' ? 'Expand to panel' : 'Collapse to popup'}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Main Content */}

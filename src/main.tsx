@@ -9,18 +9,20 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { ThemeProvider } from "@/components/theme-provider"
 import { MochimoWalletProvider } from "mochimo-wallet"
 import { TooltipProvider } from '@radix-ui/react-tooltip'
+import { ViewModeProvider } from '@/lib/contexts/ViewModeContext'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="dark">
-      <ErrorBoundary>
-        <MochimoWalletProvider>
-          <TooltipProvider>
-            <App />
-          </TooltipProvider>
-        </MochimoWalletProvider>
-
-      </ErrorBoundary>
-    </ThemeProvider>
+    <ViewModeProvider>
+      <ThemeProvider defaultTheme="dark">
+        <ErrorBoundary>
+          <MochimoWalletProvider>
+            <TooltipProvider>
+              <App />
+            </TooltipProvider>
+          </MochimoWalletProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ViewModeProvider>
   </React.StrictMode>,
 )
