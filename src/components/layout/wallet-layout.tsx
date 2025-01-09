@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Menu, Maximize2, Minimize2 } from 'lucide-react'
+import { Menu, Maximize2, Minimize2, PanelRight, PanelRightClose } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -50,7 +50,8 @@ export function WalletLayout({
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center ">
+        <ThemeToggle />
           {isExtension && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -61,9 +62,9 @@ export function WalletLayout({
                   className="hover:bg-primary/10"
                 >
                   {viewMode === 'popup' ? (
-                    <Maximize2 className="h-4 w-4 text-foreground/80" />
+                    <PanelRight className="h-4 w-4 text-foreground/80" />
                   ) : (
-                    <Minimize2 className="h-4 w-4 text-foreground/80" />
+                    <PanelRightClose className="h-4 w-4 text-foreground/80" />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -72,7 +73,6 @@ export function WalletLayout({
               </TooltipContent>
             </Tooltip>
           )}
-          <ThemeToggle />
         </div>
       </div>
 
