@@ -18,22 +18,28 @@ export function WalletLayout({
   return (
     <div className="flex flex-col h-[600px] bg-background">
       {/* Fixed Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           {showMenu ? (
             <Button
               variant="ghost"
               size="icon"
               onClick={onMenuClick}
+              className="hover:bg-primary/10"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 text-foreground/80" />
             </Button>
           ) : (
             <div className="w-8" />
           )}
-          <div className="flex items-center">
-            <Logo size="sm" />
-            <h1 className="text-lg font-semibold">Mochimo Wallet</h1>
+          <div className="flex items-center gap-2">
+            <Logo 
+              size="sm" 
+              className="text-primary"
+            />
+            <h1 className="text-lg font-semibold font-montserrat text-foreground/90">
+              Mochimo Wallet
+            </h1>
           </div>
         </div>
         <ThemeToggle />
