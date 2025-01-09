@@ -28,4 +28,7 @@ async function initializeWallet() {
 }
 
 // Run initialization
-initializeWallet(); 
+initializeWallet();
+
+// Export empty object to make this a module
+export {} 
