@@ -8,11 +8,10 @@
   },
   "permissions": [
     "storage",
-    "tabs",
-    "http://localhost:3000/*"
+    "tabs"
   ],
   "background": {
-    "service_worker": "src/background/index.js",
+    "service_worker": "background.js",
     "type": "module"
   },
   "icons": {
