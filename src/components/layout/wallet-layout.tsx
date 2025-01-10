@@ -23,7 +23,8 @@ export function WalletLayout({
   return (
     <div className={cn(
       "flex flex-col bg-background",
-      "h-screen"
+      "h-screen",
+      viewMode === 'popup' ? 'w-[360px] h-[600px]' : 'w-screen h-screen'
     )}>
       {/* Fixed Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-card/50 backdrop-blur-sm">
