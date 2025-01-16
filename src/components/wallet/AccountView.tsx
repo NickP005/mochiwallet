@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   Wallet,
   Hash,
-  Coins
+  Coins,
+  ArrowRight,
+  Clock
 } from 'lucide-react'
 import {
   Collapsible,
@@ -32,6 +34,13 @@ import { MochimoService } from '@/lib/services/mochimo'
 import { Account, useWallet, MasterSeed, useAccounts, useNetwork, NetworkProvider } from 'mochimo-wallet'
 
 import { SendModal } from './SendModal'
+import { cn } from '@/lib/utils'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from '@/components/ui/tooltip'
 
 interface AccountViewProps {
   account: Account
@@ -46,6 +55,12 @@ interface Transaction {
   address: string
 }
 
+const truncateMiddle = (text: string, startChars = 8, endChars = 8) => {
+  if (text.length <= startChars + endChars) return text
+
+  return `${text.slice(0, startChars)}...${text.slice(-endChars)}`
+}
+
 export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -54,6 +69,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [activating, setActivating] = useState(false)
 
   const [sendModalOpen, setSendModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const w = useWallet()
   const ac = useAccounts()
@@ -149,7 +165,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   }
   const network = useNetwork()
   console.log("BLOCK HEIGHT", network.blockHeight)
-  
+
   useEffect(() => {
     //when block height changes, check if the account needs to update its wots index.
     setRefreshing(true)
@@ -169,179 +185,260 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     }
   }
 
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(account.tag)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Scrollable Container */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-6 space-y-8 max-w-4xl mx-auto">
-          {/* Header Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-card to-card/50 rounded-xl p-6 shadow-lg border border-border/50"
-          >
-            {/* Account Name and Tag */}
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">
-                  {account.name}
-                </h2>
+    <TooltipProvider>
+      <div className="h-full flex flex-col bg-gradient-to-b from-background to-background/50">
+        {/* Floating Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-10 backdrop-blur-md border-b border-border/50"
+        >
+          <div className="max-w-2xl mx-auto p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+
+                <motion.div
+                  whileHover={{ rotate: 15, scale: 1.1 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                  className="p-2 rounded-full bg-primary/10 cursor-pointer"
+                >
+                  <Wallet className="h-6 w-6 text-primary" />
+                </motion.div>
+
+
+                <div>
+                  <h1 className="text-xl font-bold">{account.name}</h1>
+                  <div className="flex items-center gap-2">
+                    <TagIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="relative flex items-center group">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-xs text-primary/90 cursor-pointer">
+                            {truncateMiddle(account.tag)}
+                          </code>
+                        </TooltipTrigger>
+                        <TooltipContent>Click to copy address</TooltipContent>
+                      </Tooltip>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleCopy}
+                        className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <AnimatePresence mode="wait">
+                          {copied ? (
+                            <motion.div
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0.8, opacity: 0 }}
+                            >
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0.8, opacity: 0 }}
+                            >
+                              <Copy className="h-4 w-4 text-muted-foreground" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileHover={{ opacity: 1, y: 0 }}
+                        className="absolute left-0 top-full mt-2 pointer-events-none bg-popover/95 backdrop-blur-sm text-popover-foreground text-xs rounded-md px-2 py-1 font-mono shadow-lg"
+                      >
+                        {account.tag}
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm break-all">
-                <TagIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90 break-all">
-                  {account.tag}
-                </code>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    whileHover={{ rotate: 180 }}
+                    transition={{ duration: 0.3 }}
+                    onClick={handleRefresh}
+                    className="p-2 rounded-full hover:bg-muted/50"
+                    disabled={refreshing}
+                  >
+                    <RefreshCcw className={cn(
+                      "h-5 w-5 text-muted-foreground",
+                      refreshing && "animate-spin"
+                    )} />
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {refreshing ? 'Refreshing...' : 'Refresh balance'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Main Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto p-6 space-y-6">
+            {/* Balance Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative group"
+            >
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="bg-card rounded-xl border border-border/50 overflow-hidden hover:shadow-lg transition-all duration-300"
+              >
+                <div className="p-6">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                    <Coins className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Available Balance</span>
+                  </div>
+
+                  <motion.div
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    className="flex flex-col"
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <div className="font-mono">
+                        <span className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                          {account.balance
+                            ? (parseFloat(account.balance) / 1e9).toFixed(9)
+                            : '0.000000000'
+                          }
+                        </span>
+                        <span className="ml-2 text-xl text-muted-foreground font-medium">
+                          MCM
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-4">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Button
+                      size="lg"
+                      onClick={() => setSendModalOpen(true)}
+                      disabled={!isActivated}
+                      className={cn(
+                        "w-full h-24 relative overflow-hidden group",
+                        isActivated
+                          ? "bg-primary/10 hover:bg-primary/20 text-primary border-2 border-primary/20"
+                          : "bg-muted border-2 border-muted"
+                      )}
+                    >
+                      <motion.div
+                        className="flex flex-col items-center gap-2 relative z-10"
+                        whileHover={{ y: -5 }}
+                      >
+                        <Send className={cn(
+                          "h-6 w-6",
+                          isActivated ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        <span className="font-semibold">Send</span>
+                      </motion.div>
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        initial={false}
+                        whileHover={{ scale: 1.5, rotate: 45 }}
+                      />
+                    </Button>
+                  </motion.div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isActivated
+                    ? 'Send MCM to another address'
+                    : 'Account needs to be activated first'
+                  }
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full h-24 relative overflow-hidden group border-2 hover:border-primary/20"
+                    >
+                      <motion.div
+                        className="flex flex-col items-center gap-2 relative z-10"
+                        whileHover={{ y: -5 }}
+                      >
+                        <QrCode className="h-6 w-6" />
+                        <span className="font-semibold">Receive</span>
+                      </motion.div>
+                      <motion.div
+                        className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        initial={false}
+                        whileHover={{ scale: 1.5, rotate: 45 }}
+                      />
+                    </Button>
+                  </motion.div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Receive MCM - Show QR code and address
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Recent Activity */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-card rounded-xl border-2 border-border/50"
+            >
+              <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-foreground">Recent Activity</h3>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 hover:bg-primary/10"
-                  onClick={() => copyToClipboard(account.tag)}
+                  className="text-xs hover:text-primary hover:bg-primary/10"
                 >
-                  <Copy className="h-3 w-3" />
+                  View All
                 </Button>
               </div>
-            </div>
-
-            {/* Status and Refresh */}
-            <div className="flex items-center justify-between mb-6 text-sm">
-              <div className="flex items-center gap-2">
-                {checkingActivation ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <RefreshCcw className="h-4 w-4 animate-spin" />
-                    <span>Checking status...</span>
-                  </div>
-                ) : isActivated ? (
-                  <div className="flex items-center gap-2 text-green-500">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Active</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-yellow-500">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>Not Active</span>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="h-7 px-2 hover:bg-primary/10"
-              >
-                <RefreshCcw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-
-            {/* Balance */}
-            {(
-              <div className="flex items-baseline gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Coins className="h-4 w-4" />
-                    <span>Available Balance</span>
-                  </div>
-                  <div className="font-mono">
-                    <span className="text-2xl font-bold text-primary">
-                      {checkingActivation ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : (
-                        formatBalance(account.balance).split(' ')[0]
-                      )}
-                    </span>
-                    <span className="text-lg ml-2 text-muted-foreground">MCM</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Action Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 gap-4"
-          >
-            <Button
-              size="lg"
-              className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-              disabled={!isActivated}
-              onClick={() => setSendModalOpen(true)}
-            >
-              <Send className="h-6 w-6" />
-              <span>Send</span>
-            </Button>
-
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-24 flex flex-col items-center justify-center gap-2 border-2 hover:bg-primary/5"
-            >
-              <QrCode className="h-6 w-6" />
-              <span>Receive</span>
-            </Button>
-          </motion.div>
-
-
-
-          {/* Transactions Section */}
-          {/* <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-card rounded-xl border border-border/50 overflow-hidden"
-          >
-            <div className="p-4 border-b border-border/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold">Recent Transactions</h3>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs">
-                View All
-              </Button>
-            </div>
-            <div className="divide-y divide-border/50">
-              {tempTransactions.map((tx, i) => (
-                <div key={i} className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${tx.type === 'receive'
-                        ? 'bg-green-500/10 text-green-500'
-                        : 'bg-blue-500/10 text-blue-500'
-                        }`}>
-                        {tx.type === 'receive' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                      </div>
-                      <div>
-                        <div className="font-medium">{tx.type === 'receive' ? 'Received' : 'Sent'}</div>
-                        <div className="text-sm text-muted-foreground">{tx.address}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-medium ${tx.type === 'receive' ? 'text-green-500' : 'text-blue-500'
-                        }`}>
-                        {tx.type === 'receive' ? '+' : '-'}{tx.amount} MCM
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(tx.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div> */}
-
+              {/* Transaction list will go here */}
+            </motion.div>
+          </div>
         </div>
-      </div>
 
-      <SendModal
-        isOpen={sendModalOpen}
-        onClose={() => setSendModalOpen(false)}
-      />
-    </div>
+        <SendModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+        />
+      </div>
+    </TooltipProvider>
   )
 } 
