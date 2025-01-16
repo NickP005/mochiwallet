@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Account, NetworkProvider, useAccounts, useNetwork } from 'mochimo-wallet'
-import EmojiPicker from 'emoji-picker-react'
+import EmojiPicker, { Theme } from 'emoji-picker-react'
 import { getInitials } from '@/lib/utils/colors'
 import { AccountAvatar } from '../ui/account-avatar'
 import { useTheme } from "@/components/theme-provider"
@@ -45,6 +45,9 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const [newName, setNewName] = useState(account.name || '')
   const [isSaving, setIsSaving] = useState(false)
   const { theme } = useTheme()
+
+  // Convert theme to EmojiPicker theme type
+  const emojiPickerTheme: Theme = theme === 'dark' ? Theme.DARK : Theme.LIGHT
 
   const handleNameUpdate = async () => {
     if (newName.trim() && newName !== account.name) {
@@ -104,10 +107,8 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                 onEmojiClick={handleEmojiSelect}
                 width={320}
                 height={400}
-                theme={theme === 'dark' ? 'dark' : 'light'}
+                theme={emojiPickerTheme}
                 skinTonesDisabled
-                searchDisabled
-                lazyLoadEmojis
               />
             </div>
           )}
