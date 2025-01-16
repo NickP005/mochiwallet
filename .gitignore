@@ -34,3 +34,11 @@ yarn-error.log*
 .DS_Store
 *.pem
 ui_screenshots
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+.env.production

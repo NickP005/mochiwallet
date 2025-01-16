@@ -11,12 +11,14 @@ import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkServi
 
 import { motion } from "framer-motion"
 import { Logo } from "./components/ui/logo"
+import { env } from "./config/env"
 
-const apiUrl = 'http://46.250.241.212:8081'
-const apiUrl2 = 'http://46.250.241.212:8081'
+// const apiUrl = 'http://46.250.241.212:8081'
+// const apiUrl2 = 'http://35.208.202.76:8080'
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import'
-const network = new MeshNetworkService(apiUrl)
+const network = new MeshNetworkService(env.apiUrl)
 NetworkProvider.setNetwork(network)
+
 export function App() {
   const [view, setView] = useState<WalletView>('welcome')
   const [loading, setLoading] = useState(true)
