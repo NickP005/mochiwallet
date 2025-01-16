@@ -15,7 +15,7 @@ import { Logo } from "./components/ui/logo"
 const apiUrl = 'http://46.250.241.212:8081'
 const apiUrl2 = 'http://46.250.241.212:8081'
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import'
-const network = new MeshNetworkService(apiUrl2)
+const network = new MeshNetworkService(apiUrl)
 NetworkProvider.setNetwork(network)
 export function App() {
   const [view, setView] = useState<WalletView>('welcome')

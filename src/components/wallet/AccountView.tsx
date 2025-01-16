@@ -52,7 +52,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [isActivated, setIsActivated] = useState<boolean | null>(null)
   const [checkingActivation, setCheckingActivation] = useState(false)
   const [activating, setActivating] = useState(false)
-  const [balance, setBalance] = useState<string | null>(null)
+
   const [sendModalOpen, setSendModalOpen] = useState(false)
 
   const w = useWallet()
@@ -113,7 +113,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         console.log('CURRENT NETWORK ADDRESS', currentAddress)
         console.log('CURRENTLY USED WOTS INDEX', account.wotsIndex)
         const t1 = performance.now()
-        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex').subarray(20, 40))
+        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex').subarray(20, 40), Buffer.from(account.faddress, 'hex'))
         const t2 = performance.now()
         console.log('current wots index', currentWotsIndex)
         console.log('time taken', t2 - t1)
@@ -131,22 +131,10 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         })
       }
       setIsActivated(isActivated)
-
-      // Update balance if account is activated
-      if (response) {
-        const tagResponse = await NetworkProvider.getNetwork().resolveTag(account.tag)
-        if (tagResponse.success && tagResponse.balanceConsensus) {
-          setBalance(tagResponse.balanceConsensus)
-        }
-      } else {
-        setBalance(null)
-      }
-
       onUpdate(account)
     } catch (error) {
       console.error('Error checking activation:', error)
       setIsActivated(false)
-      setBalance(null)
     } finally {
       setCheckingActivation(false)
     }
@@ -154,39 +142,22 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
   // Handle refresh
   const handleRefresh = async () => {
-    try {
-      setRefreshing(true)
-      await checkActivation()
-    } finally {
+    setRefreshing(true)
+    checkActivation().finally(() => {
       setRefreshing(false)
-    }
+    })
   }
+  const network = useNetwork()
+  console.log("BLOCK HEIGHT", network.blockHeight)
+  
+  useEffect(() => {
+    //when block height changes, check if the account needs to update its wots index.
+    setRefreshing(true)
+    checkActivation().finally(() => {
+      setRefreshing(false)
+    })
+  }, [network.blockHeight, account.tag])
 
-  // Handle activation
-  const handleActivate = async () => {
-    try {
-      setActivating(true)
-      const curr = ac.currentWOTSKeyPair?.address
-      console.log(
-        'activating with tag:: ', curr
-      )
-      setTimeout(async () => {
-        await checkActivation()
-        setActivating(false)
-      }, 5000)
-      try {
-        await net.activateTag()
-      } catch (err) {
-        console.error('Error activating account:', err)
-      } finally {
-        setActivating(false)
-      }
-
-    } catch (err) {
-      console.error('Error activating account:', err)
-      setActivating(false)
-    }
-  }
 
   // Copy to clipboard helper
   const copyToClipboard = async (text: string) => {
@@ -266,7 +237,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
             </div>
 
             {/* Balance */}
-            {isActivated && (
+            {(
               <div className="flex items-baseline gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -278,7 +249,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                       {checkingActivation ? (
                         <span className="text-muted-foreground">Loading...</span>
                       ) : (
-                        formatBalance(balance).split(' ')[0]
+                        formatBalance(account.balance).split(' ')[0]
                       )}
                     </span>
                     <span className="text-lg ml-2 text-muted-foreground">MCM</span>
@@ -315,35 +286,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
             </Button>
           </motion.div>
 
-          {/* Activation Button */}
-          {!isActivated && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex justify-center"
-            >
-              <Button
-                size="lg"
-                variant="default"
-                onClick={handleActivate}
-                disabled={activating}
-                className="w-full max-w-md bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
-              >
-                {activating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Activating Account...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4 mr-2" />
-                    Activate Account
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          )}
+
 
           {/* Transactions Section */}
           {/* <motion.div

@@ -95,9 +95,9 @@ export function McmImportDialog({
             // Validate against network
             const response = await NetworkProvider.getNetwork().resolveTag(Buffer.from(v3addr.getTag()).toString('hex'))
             // Extract first 20 bytes (tag) and last 20 bytes (addr hash) from consensus address
-            const consensusTag = response.addressConsensus.slice(0, 40) // First 20 bytes (40 hex chars)
-            const consensusAddrHash = response.addressConsensus.slice(-40) // Last 20 bytes (40 hex chars)
-            
+            const consensusTag = response.addressConsensus.slice(2, 42) // First 20 bytes (40 hex chars)
+            const consensusAddrHash = response.addressConsensus.slice(42, 82) // Last 20 bytes (40 hex chars)
+            console.log("parts", consensusTag, consensusAddrHash)
             // Extract same parts from v3 address
                
             // Check if either part doesn't match
@@ -113,7 +113,6 @@ export function McmImportDialog({
                 }
               }
             }
-            const tagMatch = response.addressConsensus === Buffer.from(v3addr.getTag()).toString('hex')
             if (response.addressConsensus !== Buffer.from(v3addr.getAddress()).toString('hex')) {
               return {
                 ...account,
