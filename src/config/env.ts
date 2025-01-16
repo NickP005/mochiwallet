@@ -9,5 +9,3 @@ export const env: EnvConfig = {
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD
 } 
-
-console.log(env)
