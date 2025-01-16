@@ -218,9 +218,9 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                 </h2>
               </div>
 
-              <div className="flex items-center gap-2 text-sm">
-                <TagIcon className="h-4 w-4 text-muted-foreground" />
-                <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90">
+              <div className="flex items-center gap-2 text-sm break-all">
+                <TagIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-primary/90 break-all">
                   {account.tag}
                 </code>
                 <Button
@@ -346,7 +346,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
           )}
 
           {/* Transactions Section */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -390,7 +390,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </motion.div> */}
 
         </div>
       </div>

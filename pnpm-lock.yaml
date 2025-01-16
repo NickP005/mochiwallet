@@ -78,11 +78,11 @@ importers:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
       mochimo-wallet:
-        specifier: ^1.1.7
-        version: 1.1.7(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1)
-      mochimo-wots-v2:
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^1.1.9
+        version: 1.1.9(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1)
+      mochimo-wots:
+        specifier: ^1.2.4
+        version: 1.2.4
       process:
         specifier: ^0.11.10
         version: 0.11.10
@@ -2508,14 +2508,11 @@ packages:
       crypto-js: ^4.2.0
       mochimo-wots: ^1.2.1
 
-  mochimo-wallet@1.1.7:
-    resolution: {integrity: sha512-oC6MU1IBUzuj+DD9MNoCnoOxWhci8/9wQ1WlcrgWh15DRHQHDRQhHp76Aq+HDljJdfIvGy2rLHYmKbWwbTDtgQ==}
+  mochimo-wallet@1.1.9:
+    resolution: {integrity: sha512-h5Yl28xxbvL51rcXPXnctaHnL5FDzVVzlV6Ri58fhikmxF2DifYvS4sfdydGyaWdsHpQ4XNscsVuPDdlzXnpxw==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
-
-  mochimo-wots-v2@0.1.2:
-    resolution: {integrity: sha512-HbRVJDfI+xgHcvNxXwnq3CYVsKXo7TyXrHcezKRdlY8zBOITTWlC9gx2c+SOJO0xk+H/q3wIMtIiycP3j/6YDw==}
 
   mochimo-wots@1.2.4:
     resolution: {integrity: sha512-iwZ2sNz1miSBO2ak77UZKS/GN0ctWIXYgCTvvhShTx3+cy0+Ig/WGF7q5A6BcEN4gDU7iyM7atUauFe14Xlpng==}
@@ -5956,7 +5953,7 @@ snapshots:
       crypto-js: 4.2.0
       mochimo-wots: 1.2.4
 
-  mochimo-wallet@1.1.7(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1):
+  mochimo-wallet@1.1.9(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1):
     dependencies:
       '@reduxjs/toolkit': 2.5.0(react-redux@9.2.0(@types/react@18.3.16)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
       '@scure/bip39': 1.5.0
@@ -5973,10 +5970,6 @@ snapshots:
       - '@types/react'
       - immer
       - redux
-
-  mochimo-wots-v2@0.1.2:
-    dependencies:
-      crypto-js: 4.2.0
 
   mochimo-wots@1.2.4:
     dependencies:

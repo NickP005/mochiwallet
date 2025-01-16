@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2, Tag, User, Coins, Copy, Wallet } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { DecodeResult, MCMDecoder, WOTSEntry } from 'mochimo-wallet'
+import { DecodeResult, MCMDecoder, NetworkProvider, WOTSEntry } from 'mochimo-wallet'
 import { MochimoService } from '@/lib/services/mochimo'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { useAccounts } from 'mochimo-wallet'
-
+import { WotsAddress } from 'mochimo-wots'
 interface AccountValidation {
   isValid: boolean
   networkAddress?: string
@@ -73,20 +73,13 @@ export function McmImportDialog({
     try {
       const validationResults = await Promise.all(
         accountsToValidate.map(async (account): Promise<ValidatedAccount> => {
-          // Check if account is unavailable
-          if (account.address.endsWith(UNAVAILABLE_PREFIX)) {
-            return {
-              ...account,
-              validation: {
-                isValid: false,
-                status: 'unavailable',
-                error: 'This account type is not available for import'
-              }
-            }
-          }
 
+          const v3addr = WotsAddress.wotsAddressFromBytes(Buffer.from(account.address, 'hex').subarray(0,2144))
+          const v3Tag = Buffer.from(v3addr.getTag()).toString('hex')
+          const v3AddrHash = Buffer.from(v3addr.getAddress()).toString('hex').slice(-40)
+     
           // Check if tag already exists in wallet
-          const existingAccount = acc.accounts.find(a => a.tag === account.tag)
+          const existingAccount = acc.accounts.find(a => a.tag === v3Tag)
           if (existingAccount) {
             return {
               ...account,
@@ -100,9 +93,28 @@ export function McmImportDialog({
 
           try {
             // Validate against network
-            const response = await MochimoService.resolveTag(account.tag)
-
-            if (response.addressConsensus !== account.address) {
+            const response = await NetworkProvider.getNetwork().resolveTag(Buffer.from(v3addr.getTag()).toString('hex'))
+            // Extract first 20 bytes (tag) and last 20 bytes (addr hash) from consensus address
+            const consensusTag = response.addressConsensus.slice(0, 40) // First 20 bytes (40 hex chars)
+            const consensusAddrHash = response.addressConsensus.slice(-40) // Last 20 bytes (40 hex chars)
+            
+            // Extract same parts from v3 address
+               
+            // Check if either part doesn't match
+            if (consensusTag !== v3Tag || consensusAddrHash !== v3AddrHash) {
+              return {
+                ...account,
+                validation: {
+                  isValid: false,
+                  status: 'mismatch', 
+                  networkAddress: response.addressConsensus,
+                  networkBalance: response.balanceConsensus,
+                  error: 'Address or tag mismatch with network'
+                }
+              }
+            }
+            const tagMatch = response.addressConsensus === Buffer.from(v3addr.getTag()).toString('hex')
+            if (response.addressConsensus !== Buffer.from(v3addr.getAddress()).toString('hex')) {
               return {
                 ...account,
                 validation: {
@@ -137,7 +149,14 @@ export function McmImportDialog({
         })
       )
 
-      setAccounts(validationResults)
+      // Sort accounts - valid ones first, then invalid ones
+      const sortedResults = validationResults.sort((a, b) => {
+        if (a.validation?.isValid && !b.validation?.isValid) return -1
+        if (!a.validation?.isValid && b.validation?.isValid) return 1
+        return 0
+      })
+
+      setAccounts(sortedResults)
     } catch (error) {
       console.error('Error during validation:', error)
       setError('Failed to validate accounts')
