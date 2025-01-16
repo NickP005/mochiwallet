@@ -18,8 +18,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Account, useAccounts } from 'mochimo-wallet'
-import { MochimoService } from '@/lib/services/mochimo'
+import { Account, NetworkProvider, useAccounts, useNetwork } from 'mochimo-wallet'
 import EmojiPicker from 'emoji-picker-react'
 import { getInitials } from '@/lib/utils/colors'
 import { AccountAvatar } from '../ui/account-avatar'
@@ -226,7 +225,7 @@ export function ManageAccountsDialog({
   const acc = useAccounts()
   const [tempAccounts, setTempAccounts] = useState(acc.accounts)
   const [balances, setBalances] = useState<Record<string, string>>({})
-
+  const network = useNetwork()
   // Reset temp accounts when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -240,7 +239,7 @@ export function ManageAccountsDialog({
     const newBalances: Record<string, string> = {}
     await Promise.all(tempAccounts.map(async (account) => {
       try {
-        const response = await MochimoService.resolveTag(account.tag)
+        const response = await NetworkProvider.getNetwork().resolveTag(account.tag)
         if (response.success) {
           newBalances[account.tag] = response.balanceConsensus
         }

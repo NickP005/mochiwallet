@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/collapsible"
 
 import { MochimoService } from '@/lib/services/mochimo'
-import { Account, useWallet, MasterSeed, useAccounts, useNetwork } from 'mochimo-wallet'
+import { Account, useWallet, MasterSeed, useAccounts, useNetwork, NetworkProvider } from 'mochimo-wallet'
 
 import { SendModal } from './SendModal'
 
@@ -95,30 +95,32 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     try {
       console.log('checking activation')
       setCheckingActivation(true)
-      const response = await MochimoService.resolveTag(account.tag)
+      const response = await NetworkProvider.getNetwork().resolveTag(account.tag)
       // Account is activated if addressConsensus is not empty
       const isActivated = Boolean(response.success &&
         response.addressConsensus &&
         response.addressConsensus.length > 0)
-      const currentAddress = response.addressConsensus;
+      const currentAddress = response.addressConsensus.slice(2);
       //deduce current wotsindex from this
       let t1 = performance.now()
-      const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.address
+      const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.wotsWallet.getAddress()!
       let t2 = performance.now()
       console.log('time taken to get wots address', t2 - t1)
-      console.log('current wots address being used', currentWotsAddressBeingUsed)
+      console.log('current wots address being used', Buffer.from(currentWotsAddressBeingUsed).toString('hex'))
 
-      if (currentAddress && currentAddress !== currentWotsAddressBeingUsed) {
+      if (currentAddress && currentAddress !== Buffer.from(currentWotsAddressBeingUsed).toString('hex')) {
         console.error('current address does not match with the wots address being used')
-        console.log('current network address', currentAddress)
-        console.log('next wots index', account.wotsIndex)
+        console.log('CURRENT NETWORK ADDRESS', currentAddress)
+        console.log('CURRENTLY USED WOTS INDEX', account.wotsIndex)
         const t1 = performance.now()
-        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddress(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex'))
+        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex').subarray(20, 40))
         const t2 = performance.now()
         console.log('current wots index', currentWotsIndex)
         console.log('time taken', t2 - t1)
         if (currentWotsIndex !== undefined && currentWotsIndex !== null) ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
         console.log('updated wots index', currentWotsIndex)
+      } else {
+        console.log('current address matches with the wots address being used')
       }
 
       if (isActivated) {
@@ -132,7 +134,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
       // Update balance if account is activated
       if (response) {
-        const tagResponse = await MochimoService.resolveTag(account.tag)
+        const tagResponse = await NetworkProvider.getNetwork().resolveTag(account.tag)
         if (tagResponse.success && tagResponse.balanceConsensus) {
           setBalance(tagResponse.balanceConsensus)
         }

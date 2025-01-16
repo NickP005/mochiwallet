@@ -46,13 +46,13 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
       }
 
       const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1e9))
-      const result = await tx.sendTransaction(recipient, amountBigInt) as TransactionResponse
+      const result = await tx.sendTransaction(recipient, amountBigInt) 
 
-      if (result.status === 'success' && result.data && ac.selectedAccount) {
-        await ac.updateAccount(ac.selectedAccount, { wotsIndex: currAccount.wotsIndex + 1 })
-        setSuccess({ txid: result.data.txid })
+      if (result) {
+        await ac.updateAccount(ac.selectedAccount!, { wotsIndex: currAccount.wotsIndex + 1 })
+        setSuccess({ txid: result })
       } else {
-        throw new Error(result.error || 'Transaction failed')
+        throw new Error(result || 'Transaction failed')
       }
     } catch (error) {
       console.error('Send error:', error)
