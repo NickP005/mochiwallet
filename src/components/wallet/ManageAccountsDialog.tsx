@@ -144,7 +144,11 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
           <div className="space-y-3 bg-muted/50 rounded-lg p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Tag</span>
-              <code className="bg-muted px-2 py-0.5 rounded">{account.tag}</code>
+              <div className="max-w-[70%]">
+                <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs break-all">
+                  {account.tag}
+                </code>
+              </div>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Index</span>

@@ -107,7 +107,7 @@ export function WalletDashboard({
         onClose={() => setManageAccountsOpen(false)}
       />
 
-      <main className="flex-1 h-full overflow-auto">
+      <main className="flex-1 h-full w-full">
         {acc.selectedAccount ? (
           <AccountView 
             account={accounts.find(a=>a.tag === acc.selectedAccount)!}
