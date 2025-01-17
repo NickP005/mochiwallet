@@ -370,7 +370,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
               <TooltipContent>
                 {isActivated
                   ? 'Send MCM to another address'
-                  : 'Account needs to be activated first'
+                  : 'Account does not have any balance'
                 }
               </TooltipContent>
             </Tooltip>
