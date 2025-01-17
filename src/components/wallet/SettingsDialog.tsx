@@ -22,6 +22,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {version} from '../../../package.json'
+
+type Theme = 'dark' | 'light' | 'system'
+
 interface SettingsDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -29,7 +32,10 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme() as { 
+    theme: Theme, 
+    setTheme: (theme: Theme) => void 
+  }
   const wallet = useWallet()
 
   const handleLogout = async () => {
