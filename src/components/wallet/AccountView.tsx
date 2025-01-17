@@ -184,96 +184,109 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-10 backdrop-blur-md border-b border-border/50"
       >
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-6 py-4">
+          {/* Main header content */}
           <div className="flex items-center justify-between">
+            {/* Left side - Account name and icon */}
             <div className="flex items-center gap-3">
-
-              <motion.div
-                whileHover={{ rotate: 15, scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 400 }}
-                className="p-2 rounded-full bg-primary/10 cursor-pointer"
-              >
-                <Wallet className="h-6 w-6 text-primary" />
-              </motion.div>
-
-
-              <div>
-                <h1 className="text-xl font-bold">{account.name}</h1>
-                <div className="flex items-center gap-2">
-                  <TagIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <div className="relative flex items-center group">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-xs text-primary/90 cursor-pointer" onClick={handleCopy}>
-                          {tag}
-                        </code>
-                      </TooltipTrigger>
-                      <TooltipContent>Click to copy address</TooltipContent>
-                    </Tooltip>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleCopy}
-                      className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <AnimatePresence mode="wait">
-                        {copied ? (
-                          <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
-                          >
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
-                          >
-                            <Copy className="h-4 w-4 text-muted-foreground" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.button>
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      whileHover={{ opacity: 1, y: 0 }}
-                      className="absolute left-0 top-full mt-2 pointer-events-none bg-popover/95 backdrop-blur-sm text-popover-foreground text-xs rounded-md px-2 py-1 font-mono shadow-lg"
-                    >
-                      {tag}
-                    </motion.div>
-                  </div>
-                </div>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.div
+                    whileHover={{ rotate: 15, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                    className="p-2 rounded-full bg-primary/10 shrink-0 cursor-pointer"
+                  >
+                    <Wallet className="h-5 w-5 text-primary" />
+                  </motion.div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Account Details</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger>
+                  <h1 className="text-lg font-bold cursor-default">
+                    {account.name}
+                  </h1>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Account Name</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
+            {/* Right side - Actions */}
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRefresh}
+                    className="h-9 w-9"
+                    disabled={refreshing}
+                  >
+                    <RefreshCcw className={cn(
+                      "h-4 w-4",
+                      refreshing && "animate-spin"
+                    )} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {refreshing ? 'Refreshing...' : 'Refresh Account'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* Sub-header with tag */}
+          <div className="mt-2 flex items-center gap-2 px-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.button
-                  whileHover={{ rotate: 180 }}
-                  transition={{ duration: 0.3 }}
-                  onClick={handleRefresh}
-                  className="p-2 rounded-full hover:bg-muted/50"
-                  disabled={refreshing}
-                >
-                  <RefreshCcw className={cn(
-                    "h-5 w-5 text-muted-foreground",
-                    refreshing && "animate-spin"
-                  )} />
-                </motion.button>
+                <TagIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
-                {refreshing ? 'Refreshing...' : 'Refresh balance'}
+                <p>Account Tag</p>
               </TooltipContent>
             </Tooltip>
+            <div className="flex items-center gap-2 bg-muted/50 px-2 py-1 rounded-md flex-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <code className="font-mono text-xs text-muted-foreground flex-1 truncate cursor-pointer" onClick={handleCopy}>
+                    {tag}
+                  </code>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Click to copy tag</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 hover:bg-background/50"
+                    onClick={handleCopy}
+                  >
+                    {copied ? (
+                      <CheckCircle className="h-3 w-3 text-primary" />
+                    ) : (
+                      <Copy className="h-3 w-3 text-muted-foreground" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {copied ? 'Copied!' : 'Copy tag to clipboard'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </motion.div>
 
       {/* Main Content - Add overflow-y-auto here */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto p-6 space-y-6">
+        <div className="max-w-2xl mx-auto px-6 py-4 space-y-6">
           {/* Balance Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -298,7 +311,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                 >
                   <div className="flex items-baseline gap-2">
                     <div className="font-mono">
-                      <span className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                      <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                         {account.balance
                           ? (parseFloat(account.balance) / 1e9).toFixed(9)
                           : '0.000000000'
