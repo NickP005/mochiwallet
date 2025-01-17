@@ -7,7 +7,7 @@ import fs from 'fs'
 function generateManifest(): Plugin {
   return {
     name: 'generate-manifest',
-    buildEnd() {
+    writeBundle() {
       fs.writeFileSync(
         'dist/manifest.json',
         JSON.stringify(manifest, null, 2)
