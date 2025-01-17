@@ -1,14 +1,28 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { manifest } from './src/config/manifest'
+import fs from 'fs'
+
+function generateManifest(): Plugin {
+  return {
+    name: 'generate-manifest',
+    buildEnd() {
+      fs.writeFileSync(
+        'dist/manifest.json',
+        JSON.stringify(manifest, null, 2)
+      )
+    }
+  }
+}
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
     define: {
       __API_URL__: JSON.stringify(env.MESH_API_URL),
+      'process.env.VERSION': JSON.stringify(manifest.version)
     },
     build: {
       rollupOptions: {
@@ -19,11 +33,17 @@ export default defineConfig(({ mode }) => {
         output: {
           entryFileNames: (chunkInfo) => {
             return chunkInfo.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js'
+          },
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
           }
         }
       }
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      generateManifest()
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

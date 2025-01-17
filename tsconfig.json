@@ -14,8 +14,6 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
@@ -27,5 +25,10 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "vite.config.ts",
+    "src/config/manifest.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

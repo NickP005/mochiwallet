@@ -1,9 +1,7 @@
 import './polyfills'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { Provider } from 'react-redux'
-import { store } from './lib/store'
-import { App } from './App.tsx'
+import { App } from './App'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ThemeProvider } from "@/components/theme-provider"
