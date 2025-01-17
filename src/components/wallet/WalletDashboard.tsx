@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { HDWallet, useWallet, useAccounts } from 'mochimo-wallet'
 import { AddAccountDialog } from './AddAccountDialog'
 import { ManageAccountsDialog } from './ManageAccountsDialog'
+import { SettingsDialog } from './SettingsDialog'
 
 interface WalletDashboardProps {
   wallet: HDWallet
@@ -20,6 +21,7 @@ export function WalletDashboard({
   const [loading, setLoading] = useState(false)
   const [addAccountOpen, setAddAccountOpen] = useState(false)
   const [manageAccountsOpen, setManageAccountsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const w = useWallet()
   const acc = useAccounts()
 
@@ -90,7 +92,7 @@ export function WalletDashboard({
         onSelectAccount={a=>acc.setSelectedAccount(a.tag)}
         onCreateAccount={() => setAddAccountOpen(true)}
         onManageAccounts={() => setManageAccountsOpen(true)}
-        onOpenSettings={handleOpenSettings}
+        onOpenSettings={() => setSettingsOpen(true)}
         isOpen={sidebarOpen}
         onOpenChange={onSidebarOpenChange}
       />
@@ -105,6 +107,11 @@ export function WalletDashboard({
       <ManageAccountsDialog
         isOpen={manageAccountsOpen}
         onClose={() => setManageAccountsOpen(false)}
+      />
+
+      <SettingsDialog
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
 
       <main className="flex-1 h-full w-full">
