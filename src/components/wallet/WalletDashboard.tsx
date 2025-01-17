@@ -31,6 +31,8 @@ export function WalletDashboard({
       setLoading(true)
       console.log('Creating new account:', name)
       const account = await acc.createAccount(name)
+      //select the new account
+      acc.setSelectedAccount(account.tag)
       console.log('New account created:', account)
     } catch (error) {
       console.error('Error creating account:', error)
@@ -55,34 +57,8 @@ export function WalletDashboard({
     }
   }
 
-  // Rename account
-  const handleRenameAccount = async (index: number, name: string) => {
-    try {
-      //NOT IMPLEMENTED YET
-      // const updatedAccount = {
-      //   ...accounts[index],
-      //   name
-      // }
 
-      // // Update accounts state
-      // setAccounts(prev => ({
-      //   ...prev,
-      //   [index]: updatedAccount
-      // }))
-
-      // // Update wallet and save
-      // wallet.accounts[index] = updatedAccount
-      // await SecureStorage.saveWallet(wallet, wallet.password)
-    } catch (error) {
-      console.error('Error renaming account:', error)
-    }
-  }
   const accounts = acc.accounts
-
-  const handleOpenSettings = () => {
-    // TODO: Implement settings
-    console.log('Open settings')
-  }
 
   return (
     <div className="h-full flex">

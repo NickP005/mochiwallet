@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Upload, Wallet } from 'lucide-react'
+import { Plus, Upload, Wallet, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { McmImportDialog } from './McmImportDialog'
@@ -77,6 +77,13 @@ export function AddAccountDialog({
     }
   }
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!loading && accountName.trim()) {
+      handleCreateSubmit()
+    }
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -139,41 +146,46 @@ export function AddAccountDialog({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-4 py-2"
               >
-                <div className="space-y-2">
-                  <Label>Account Name</Label>
-                  <Input
-                    placeholder="Enter account name"
-                    value={accountName}
-                    onChange={(e) => {
-                      setError(null)
-                      setAccountName(e.target.value)
-                    }}
-                  />
-                </div>
+                <form onSubmit={handleFormSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="accountName">Account Name</Label>
+                    <Input
+                      id="accountName"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                      placeholder="Enter account name"
+                      autoFocus
+                    />
+                  </div>
 
-                {error && (
-                  <p className="text-sm text-red-500">
-                    {error}
-                  </p>
-                )}
+                  {error && (
+                    <p className="text-sm text-destructive">{error}</p>
+                  )}
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setView('select')}
-                    disabled={loading}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleCreateSubmit}
-                    disabled={loading || !accountName.trim()}
-                  >
-                    {loading ? 'Creating...' : 'Create'}
-                  </Button>
-                </div>
+                  <div className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setView('select')}
+                    >
+                      Back
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={loading || !accountName.trim()}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Create Account'
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </motion.div>
             )}
 
