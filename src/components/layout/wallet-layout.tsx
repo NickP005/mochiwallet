@@ -52,7 +52,6 @@ export function WalletLayout({
           </div>
         </div>
         <div className="flex items-center ">
-        <ThemeToggle />
           {isExtension && (
             <Tooltip>
               <TooltipTrigger asChild>
