@@ -73,11 +73,11 @@ export function McmImportDialog({
     try {
       const validationResults = await Promise.all(
         accountsToValidate.map(async (account): Promise<ValidatedAccount> => {
-
-          const v3addr = WotsAddress.wotsAddressFromBytes(Buffer.from(account.address, 'hex').subarray(0,2144))
+  
+          const v3addr = WotsAddress.wotsAddressFromBytes(Buffer.from(account.address, 'hex').subarray(0, 2144))
           const v3Tag = Buffer.from(v3addr.getTag()).toString('hex')
           const v3AddrHash = Buffer.from(v3addr.getAddress()).toString('hex').slice(-40)
-     
+
           // Check if tag already exists in wallet
           const existingAccount = acc.accounts.find(a => a.tag === v3Tag)
           if (existingAccount) {
@@ -97,23 +97,12 @@ export function McmImportDialog({
             // Extract first 20 bytes (tag) and last 20 bytes (addr hash) from consensus address
             const consensusTag = response.addressConsensus.slice(2, 42) // First 20 bytes (40 hex chars)
             const consensusAddrHash = response.addressConsensus.slice(42, 82) // Last 20 bytes (40 hex chars)
-            console.log("parts", consensusTag, consensusAddrHash)
+            console.log("parts", { v2tag: account.tag, wots: account.address, consensusTag, consensusAddrHash, v3Tag, v3AddrHash })
             // Extract same parts from v3 address
-               
+
             // Check if either part doesn't match
             if (consensusTag !== v3Tag || consensusAddrHash !== v3AddrHash) {
-              return {
-                ...account,
-                validation: {
-                  isValid: false,
-                  status: 'mismatch', 
-                  networkAddress: response.addressConsensus,
-                  networkBalance: response.balanceConsensus,
-                  error: 'Address or tag mismatch with network'
-                }
-              }
-            }
-            if (response.addressConsensus !== Buffer.from(v3addr.getAddress()).toString('hex')) {
+
               return {
                 ...account,
                 validation: {
@@ -121,7 +110,7 @@ export function McmImportDialog({
                   status: 'mismatch',
                   networkAddress: response.addressConsensus,
                   networkBalance: response.balanceConsensus,
-                  error: response.addressConsensus ? 'Address mismatch with network' : 'Address is not activated'
+                  error: 'Address or tag mismatch with network'
                 }
               }
             }
@@ -136,6 +125,7 @@ export function McmImportDialog({
               }
             }
           } catch (error) {
+            console.error("error", error, account.tag)
             return {
               ...account,
               validation: {
@@ -223,7 +213,7 @@ export function McmImportDialog({
       setLoading(true)
       setError(null)
 
-      const accountsToImport = accounts.filter((acc, index) => selectedAccounts.has(index))
+      const accountsToImport = accounts.filter(acc => selectedAccounts.has(acc.originalIndex))
       if (!mcmData) {
         throw new Error('No MCM data available')
       }
@@ -236,63 +226,65 @@ export function McmImportDialog({
     }
   }
 
-  const toggleAccount = (index: number) => {
-    const account = accounts[index]
+  const toggleAccount = (originalIndex: number) => {
+    const account = accounts.find(a => a.originalIndex === originalIndex)
 
-    // Don't allow selection of unavailable or invalid accounts
-    if (account.tag === UNAVAILABLE_PREFIX || !account.validation?.isValid) {
+    // Don't allow selection of invalid accounts
+    if (!account?.validation?.isValid) {
       return
     }
 
-    const newSelected = new Set(selectedAccounts)
-    if (newSelected.has(index)) {
-      newSelected.delete(index)
-    } else {
-      newSelected.add(index)
-    }
-    setSelectedAccounts(newSelected)
+    setSelectedAccounts(prev => {
+      const newSelected = new Set(prev)
+      if (newSelected.has(originalIndex)) {
+        newSelected.delete(originalIndex)
+      } else {
+        newSelected.add(originalIndex)
+      }
+      return newSelected
+    })
   }
 
   const getStatusBadge = (validation?: AccountValidation) => {
     if (!validation) return null
 
     const badges = {
-      unavailable: { 
-        label: 'Unavailable', 
+      unavailable: {
+        label: 'Unavailable',
         className: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
-        icon: AlertTriangle 
+        icon: AlertTriangle
       },
-      duplicate: { 
-        label: 'Duplicate', 
+      duplicate: {
+        label: 'Duplicate',
         className: 'bg-red-500/20 text-red-500 border-red-500/50',
-        icon: AlertCircle 
+        icon: AlertCircle
       },
-      mismatch: { 
-        label: 'Invalid', 
+      mismatch: {
+        label: 'Invalid',
         className: 'bg-red-500/20 text-red-500 border-red-500/50',
-        icon: AlertCircle 
+        icon: AlertCircle
       },
-      valid: { 
-        label: 'Valid', 
+      valid: {
+        label: 'Valid',
         className: 'bg-green-500/20 text-green-500 border-green-500/50',
-        icon: CheckCircle2 
+        icon: CheckCircle2
       },
-      loading: { 
-        label: 'Validating...', 
+      loading: {
+        label: 'Validating...',
         className: 'bg-blue-500/20 text-blue-500 border-blue-500/50',
-        icon: Loader2 
+        icon: Loader2
       }
     }
 
     const badge = badges[validation.status]
     const Icon = badge.icon
-    
+
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <div>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={cn("flex items-center gap-1", badge.className)}
             >
               <Icon className="h-3 w-3" />
@@ -325,7 +317,7 @@ export function McmImportDialog({
         </div>
       ) : (
         <div className="border rounded-lg divide-y max-h-[320px] overflow-y-auto bg-card">
-          {accounts.map((account) => (
+          {accounts.map((account, index) => (
             <div
               key={`${account.address}-${account.originalIndex}`}
               className={cn(
@@ -334,7 +326,12 @@ export function McmImportDialog({
                 selectedAccounts.has(account.originalIndex) && "bg-primary/10",
                 !account.validation?.isValid && "opacity-75"
               )}
-              onClick={() => account.validation?.isValid && toggleAccount(account.originalIndex)}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (account.validation?.isValid) {
+                  toggleAccount(account.originalIndex)
+                }
+              }}
             >
               <div className="pt-1">
                 {account.validation?.isValid && (
