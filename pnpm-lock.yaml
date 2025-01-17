@@ -81,8 +81,8 @@ importers:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
       mochimo-wallet:
-        specifier: ^1.1.18
-        version: 1.1.18(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1)
+        specifier: ^1.1.19
+        version: 1.1.19(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1)
       mochimo-wots:
         specifier: ^1.2.7
         version: 1.2.7
@@ -2524,14 +2524,14 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  mochimo-mesh-api-client@1.0.3:
-    resolution: {integrity: sha512-BciWDgYH9IOtMFJidKYfK4/K8RFGgiXZtY9Fq9QqQY/WFNIrrSfBhmmVUmNtNy3EcQUkxtAi8OsgJltsz7OAOQ==}
+  mochimo-mesh-api-client@1.1.0:
+    resolution: {integrity: sha512-E31p6LAwfVXJ0M6WtLvBXsfCgAWWmgyxfC26bknYIno7Pu3CY7fJfOqE5la7BP69tHzmMzbLIMZwiEENig7TPQ==}
     peerDependencies:
       crypto-js: ^4.2.0
       mochimo-wots: ^1.2.1
 
-  mochimo-wallet@1.1.18:
-    resolution: {integrity: sha512-No+mYWAh7z64T8cdnzRkj8AAhRMj1nNWC4HkWY313KiFfa+aZvxYwM+HIiOm3XSphd2ttzn1tYjkrOpYGLpb6w==}
+  mochimo-wallet@1.1.19:
+    resolution: {integrity: sha512-OqAn+bYM8yE/mhXo6kOgyKZmW6UhIpcQ83/5AnknYY57zyE5mqCsvnhr4z0jItuclJGMaFbgBQxVBPdoLPFtEw==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -5990,17 +5990,17 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  mochimo-mesh-api-client@1.0.3(crypto-js@4.2.0)(mochimo-wots@1.2.7):
+  mochimo-mesh-api-client@1.1.0(crypto-js@4.2.0)(mochimo-wots@1.2.7):
     dependencies:
       crypto-js: 4.2.0
       mochimo-wots: 1.2.7
 
-  mochimo-wallet@1.1.18(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1):
+  mochimo-wallet@1.1.19(@types/react@18.3.16)(immer@10.1.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(redux@5.0.1):
     dependencies:
       '@reduxjs/toolkit': 2.5.0(react-redux@9.2.0(@types/react@18.3.16)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
       '@scure/bip39': 1.5.0
       crypto-js: 4.2.0
-      mochimo-mesh-api-client: 1.0.3(crypto-js@4.2.0)(mochimo-wots@1.2.7)
+      mochimo-mesh-api-client: 1.1.0(crypto-js@4.2.0)(mochimo-wots@1.2.7)
       mochimo-wots: 1.2.7
       node-forge: 1.3.1
       pako: 2.1.0
