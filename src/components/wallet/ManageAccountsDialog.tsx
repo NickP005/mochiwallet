@@ -1,28 +1,24 @@
-import { useEffect, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useTheme } from "@/components/theme-provider"
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { getInitials } from '@/lib/utils/colors'
+import EmojiPicker, { Theme } from 'emoji-picker-react'
+import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import {
-  GripVertical,
+  AlertTriangle,
+  ArrowLeft,
   ChevronRight,
-  Coins,
-  Tag as TagIcon,
   Eye,
   EyeOff,
-  Trash2,
-  AlertTriangle,
-  X,
-  Smile,
+  GripVertical,
   Loader2,
-  ArrowLeft
+  Smile,
+  Trash2
 } from 'lucide-react'
-import { motion, AnimatePresence, Reorder } from 'framer-motion'
-import { cn } from '@/lib/utils'
-import { Account, NetworkProvider, useAccounts, useNetwork } from 'mochimo-wallet'
-import EmojiPicker, { Theme } from 'emoji-picker-react'
-import { getInitials } from '@/lib/utils/colors'
+import { Account, useAccounts } from 'mochimo-wallet'
+import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
-import { useTheme } from "@/components/theme-provider"
 
 interface ManageAccountsDialogProps {
   isOpen: boolean
@@ -372,7 +368,11 @@ export function ManageAccountsDialog({
               {selectedAccount && (
                 <DetailView
                   account={selectedAccount}
-                  onBack={() => setView('list')}
+                  onBack={() => {
+                    setView('list')
+                    setTempAccounts(acc.accounts)
+                    setHasChanges(false)
+                  }}
                   onUpdate={handleAccountUpdate}
                   onDelete={handleAccountDelete}
                 />

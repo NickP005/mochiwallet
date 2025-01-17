@@ -1,17 +1,33 @@
 import { generateColorFromTag, getInitials } from "@/lib/utils/colors";
 import { Avatar, AvatarFallback } from "./avatar";
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
-export const AccountAvatar = ({ name, emoji, tag, className }: { name: string, emoji?: string, tag: string, className?: string }) => {
-    const avatarColor = generateColorFromTag(tag)
 
-    return (
-        <Avatar className={className}>
-            <AvatarFallback style={{
-                backgroundColor: avatarColor,
-                color: 'white',
-                fontSize: '0.875rem',
-                fontWeight: 500
-            }}>{emoji || getInitials(name || '')}</AvatarFallback>
-        </Avatar>
-    )
+interface AccountAvatarProps {
+  name: string
+  tag: string
+  emoji?: string
+  className?: string
+}
+
+export function AccountAvatar({ name, tag, emoji, className }: AccountAvatarProps) {
+  const color = useMemo(() => generateColorFromTag(tag), [tag])
+  
+  return (
+    <Avatar className={cn("relative", className)}>
+      <AvatarFallback 
+        style={{ backgroundColor: color }}
+        className="text-primary-foreground"
+      >
+        {emoji ? (
+          <span className="text-2xl">
+            {emoji}
+          </span>
+        ) : (
+          getInitials(name)
+        )}
+      </AvatarFallback>
+    </Avatar>
+  )
 }       

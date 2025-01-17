@@ -84,7 +84,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     const balance = BigInt(balanceStr)
     const whole = balance / BigInt(1e9)
     const fraction = balance % BigInt(1e9)
-    return `${whole}.${fraction.toString().padStart(9, '0')} MCM`
+    return `${whole}.${fraction.toString().padStart(9, '0')}`
   }
 
   // Check activation status and balance
@@ -312,10 +312,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   <div className="flex items-baseline gap-2">
                     <div className="font-mono">
                       <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                        {account.balance
-                          ? (parseFloat(account.balance) / 1e9).toFixed(9)
-                          : '0.000000000'
-                        }
+                        {formatBalance(account.balance||'0')}
                       </span>
                       <span className="ml-2 text-xl text-muted-foreground font-medium">
                         MCM
