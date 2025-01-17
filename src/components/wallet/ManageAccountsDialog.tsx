@@ -226,38 +226,17 @@ export function ManageAccountsDialog({
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  
   const acc = useAccounts()
   const [tempAccounts, setTempAccounts] = useState(acc.accounts)
-  const [balances, setBalances] = useState<Record<string, string>>({})
-  const network = useNetwork()
   // Reset temp accounts when dialog opens
   useEffect(() => {
     if (isOpen) {
       setTempAccounts(acc.accounts)
       setHasChanges(false)
+    } else {
+      setTempAccounts([])
     }
-  }, [isOpen])
-
-  // Fetch balances for all accounts
-  const fetchBalances = async () => {
-    const newBalances: Record<string, string> = {}
-    await Promise.all(tempAccounts.map(async (account) => {
-      try {
-        const response = await NetworkProvider.getNetwork().resolveTag(account.tag)
-        if (response.success) {
-          newBalances[account.tag] = response.balanceConsensus
-        }
-      } catch (error) {
-        console.error(`Error fetching balance for ${account.tag}:`, error)
-      }
-    }))
-    setBalances(newBalances)
-  }
-
-  useEffect(() => {
-    fetchBalances()
-  }, [tempAccounts])
+  }, [isOpen, acc.accounts.length])
 
   // Handle account updates
   const handleAccountUpdate = async (tag: string, updates: Partial<Account>) => {
@@ -293,7 +272,7 @@ export function ManageAccountsDialog({
       return '0.000000000 MCM'
     }
   }
-  
+
   const handleReorder = (newOrder: Account[]) => {
     setTempAccounts(newOrder)
     setHasChanges(true)
@@ -306,7 +285,7 @@ export function ManageAccountsDialog({
         acc[account.tag] = index
         return acc
       }, {} as Record<string, number>)
-      
+
       await acc.reorderAccounts(newOrderMap)
       setHasChanges(false)
       onClose()
@@ -325,7 +304,7 @@ export function ManageAccountsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent 
+      <DialogContent
         className="h-full max-h-[600px] p-0 flex flex-col"
         showClose={true}
       >
@@ -372,7 +351,7 @@ export function ManageAccountsDialog({
                           <div>
                             <p className="font-medium">{account.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {balances[account.tag] ? formatBalance(balances[account.tag]) : 'Loading...'}
+                              {formatBalance(account.balance || '0')}
                             </p>
                           </div>
                         </div>
