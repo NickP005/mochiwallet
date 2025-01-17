@@ -395,6 +395,13 @@ export function McmImportDialog({
     </div>
   )
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!loading && password.trim()) {
+      handleDecodeFile()
+    }
+  }
+
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -446,44 +453,59 @@ export function McmImportDialog({
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4 py-2"
               >
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    Enter MCM Password
-                  </Label>
-                  <Input
-                    type="password"
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={(e) => {
-                      setError(null)
-                      setPassword(e.target.value)
-                    }}
-                  />
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 text-sm text-red-500">
-                    <AlertCircle className="h-4 w-4" />
-                    {error}
+                <form onSubmit={handleFormSubmit}>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Enter MCM Password
+                    </Label>
+                    <Input
+                      type="password"
+                      placeholder="Enter password"
+                      value={password}
+                      onChange={(e) => {
+                        setError(null)
+                        setPassword(e.target.value)
+                      }}
+                      autoFocus
+                    />
                   </div>
-                )}
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setView('upload')}
-                    disabled={loading}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleDecodeFile}
-                    disabled={loading || !password}
-                  >
-                    {loading ? 'Decoding...' : 'Continue'}
-                  </Button>
-                </div>
+                  {error && (
+                    <div className="flex items-center gap-2 text-sm text-red-500">
+                      <AlertTriangle className="h-4 w-4" />
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setView('select')
+                        setPassword('')
+                        setError(null)
+                      }}
+                      disabled={loading}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={loading || !password.trim()}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Decoding...
+                        </>
+                      ) : (
+                        'Decode'
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </motion.div>
             )}
 
