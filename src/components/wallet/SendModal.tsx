@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTransaction, useWallet, useAccounts } from 'mochimo-wallet'
 import { CheckCircle2, Loader2, Copy } from 'lucide-react'
+import { TagUtils } from 'mochimo-wots'
 
 interface SendModalProps {
   isOpen: boolean
@@ -44,9 +45,18 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
       if (!recipient || !amount) {
         throw new Error('Please fill in all fields')
       }
+      //do validation of the base58 tag
+      if (!TagUtils.validateBase58Tag(recipient)) {
+        throw new Error('Invalid recipient tag')
+      }
+      const recipientTagBytes = TagUtils.base58ToAddrTag(recipient)
+      if (!recipientTagBytes) {
+        throw new Error('Invalid recipient tag')
+      }
+      const recipientTagHex = Buffer.from(recipientTagBytes).toString('hex')
 
       const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1e9))
-      const result = await tx.sendTransaction(recipient, amountBigInt) 
+      const result = await tx.sendTransaction(recipientTagHex, amountBigInt) 
 
       if (result) {
         await ac.updateAccount(ac.selectedAccount!, { wotsIndex: currAccount.wotsIndex + 1 })

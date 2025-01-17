@@ -1,47 +1,28 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
-  Shield,
-  ShieldOff,
-  RefreshCcw,
-  Loader2,
-  Send,
-  QrCode,
-  Settings,
-  ChevronDown,
-  ChevronUp,
-  History,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Copy,
-  Tag as TagIcon,
   CheckCircle,
-  AlertTriangle,
-  Wallet,
-  Hash,
+  Clock,
   Coins,
-  ArrowRight,
-  Clock
+  Copy,
+  QrCode,
+  RefreshCcw,
+  Send,
+  Tag as TagIcon,
+  Wallet
 } from 'lucide-react'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import { useEffect, useMemo, useState } from 'react'
 
-import { MochimoService } from '@/lib/services/mochimo'
-import { Account, useWallet, MasterSeed, useAccounts, useNetwork, NetworkProvider } from 'mochimo-wallet'
+import { Account, MasterSeed, NetworkProvider, useAccounts, useNetwork, useWallet } from 'mochimo-wallet'
 
-import { SendModal } from './SendModal'
-import { cn } from '@/lib/utils'
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  TooltipProvider
+  TooltipTrigger
 } from '@/components/ui/tooltip'
-
+import { cn } from '@/lib/utils'
+import { SendModal } from './SendModal'
+import {TagUtils} from "mochimo-wots"
 interface AccountViewProps {
   account: Account
   onUpdate: (updated: Account) => void
@@ -174,6 +155,9 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     })
   }, [network.blockHeight, account.tag])
 
+  const tag = useMemo(() => {
+    return TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))
+  }, [account.tag])
 
   // Copy to clipboard helper
   const copyToClipboard = async (text: string) => {
@@ -186,7 +170,8 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(account.tag)
+    if (!tag) return
+    await navigator.clipboard.writeText(tag)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -219,8 +204,8 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   <div className="relative flex items-center group">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-xs text-primary/90 cursor-pointer">
-                          {truncateMiddle(account.tag)}
+                        <code className="bg-muted/50 px-2 py-0.5 rounded-md font-mono text-xs text-primary/90 cursor-pointer" onClick={handleCopy}>
+                          {tag}
                         </code>
                       </TooltipTrigger>
                       <TooltipContent>Click to copy address</TooltipContent>
@@ -256,7 +241,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                       whileHover={{ opacity: 1, y: 0 }}
                       className="absolute left-0 top-full mt-2 pointer-events-none bg-popover/95 backdrop-blur-sm text-popover-foreground text-xs rounded-md px-2 py-1 font-mono shadow-lg"
                     >
-                      {account.tag}
+                      {tag}
                     </motion.div>
                   </div>
                 </div>
