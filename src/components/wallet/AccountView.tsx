@@ -23,6 +23,8 @@ import {
 import { cn } from '@/lib/utils'
 import { SendModal } from './SendModal'
 import {TagUtils} from "mochimo-wots"
+import { ReceiveDialog } from './ReceiveDialog'
+
 interface AccountViewProps {
   account: Account
   onUpdate: (updated: Account) => void
@@ -51,6 +53,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
   const [sendModalOpen, setSendModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [receiveModalOpen, setReceiveModalOpen] = useState(false)
 
   const w = useWallet()
   const ac = useAccounts()
@@ -371,7 +374,8 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="w-full h-24 relative overflow-hidden group border-2 hover:border-primary/20"
+                    className="w-full h-24 relative overflow-hidden group"
+                    onClick={() => setReceiveModalOpen(true)}
                   >
                     <motion.div
                       className="flex flex-col items-center gap-2 relative z-10"
@@ -389,7 +393,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                 </motion.div>
               </TooltipTrigger>
               <TooltipContent>
-                Receive MCM - Show QR code and address
+                Receive MCM - Show QR code and tag
               </TooltipContent>
             </Tooltip>
           </div>
@@ -422,6 +426,12 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       <SendModal
         isOpen={sendModalOpen}
         onClose={() => setSendModalOpen(false)}
+      />
+
+      <ReceiveDialog
+        isOpen={receiveModalOpen}
+        onClose={() => setReceiveModalOpen(false)}
+        account={account}
       />
     </div>
   )
