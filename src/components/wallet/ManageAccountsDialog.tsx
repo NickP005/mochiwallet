@@ -19,6 +19,7 @@ import {
 import { Account, useAccounts } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
+import { TagUtils } from "mochimo-wots"
 
 interface ManageAccountsDialogProps {
   isOpen: boolean
@@ -142,7 +143,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
               <span className="text-muted-foreground">Tag</span>
               <div className="max-w-[70%]">
                 <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs break-all">
-                  {account.tag}
+                  {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))}
                 </code>
               </div>
             </div>
