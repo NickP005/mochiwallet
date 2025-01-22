@@ -49,7 +49,6 @@ class SessionWorkerManager {
       port.disconnect()
       return
     }
-    console.log('Session worker: Handling connection')
 
     const id = crypto.randomUUID()
     this.connections.set(id, port)
@@ -127,7 +126,6 @@ class SessionWorkerManager {
   }
 
   private handleStartSession(payload: { encryptedPassword: string }): void {
-    console.log('Starting session', payload.encryptedPassword)
     this.sessionData = {
       encryptedPassword: payload.encryptedPassword,
       disconnectedAt: undefined
@@ -155,7 +153,6 @@ class SessionWorkerManager {
   }
 
   private handleEndSession(): void {
-    console.log('Ending session')
     if (this.lockTimeout) {
       clearTimeout(this.lockTimeout)
       this.lockTimeout = undefined

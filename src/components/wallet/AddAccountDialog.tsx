@@ -257,7 +257,6 @@ export function AddAccountDialog({
         isOpen={mcmImportOpen}
         onClose={() => setMcmImportOpen(false)}
         onImportAccounts={async (accounts, mcmData) => {
-          console.log(accounts) 
           const indicesToImport = new Set(accounts.filter(account => account.validation?.isValid).map(account => account.originalIndex))
           await wallet.importAccountsFromMcm(mcmData, (index) => {
             return indicesToImport.has(index)

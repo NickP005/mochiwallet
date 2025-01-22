@@ -22,7 +22,6 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
     setError(null)
     setLoading(true)
     try {
-      console.log('Attempting to unlock wallet...')
       await w.unlockWallet(password)
       onUnlock(w, password)
     } catch (error) {

@@ -7,7 +7,7 @@ import { MasterSeed, useAccounts, useWallet } from 'mochimo-wallet'
 import { MnemonicBackup } from './MnemonicBackup'
 
 interface CreateWalletProps {
-  onWalletCreated: (wallet: any) => void
+  onWalletCreated: (wallet: any, password: string) => void
 }
 
 export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
@@ -38,7 +38,6 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
 
     try {
       setLoading(true)
-      console.log('Creating new wallet...')
       const ms = await MasterSeed.create()
       setMasterSeed(ms)
       setMnemonic(await ms.toPhrase())
@@ -62,7 +61,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       //create a first account
       const a = await ac.createAccount("Account 1")
       ac.setSelectedAccount(a.tag)
-      onWalletCreated(wallet)
+      onWalletCreated(wallet, password)
     } catch (error) {
       console.error('Error saving wallet:', error)
       setError('Failed to save wallet')

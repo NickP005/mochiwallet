@@ -29,11 +29,9 @@ export function WalletDashboard({
   const handleCreateAccount = async (name: string) => {
     try {
       setLoading(true)
-      console.log('Creating new account:', name)
       const account = await acc.createAccount(name)
       //select the new account
       acc.setSelectedAccount(account.tag)
-      console.log('New account created:', account)
     } catch (error) {
       console.error('Error creating account:', error)
       throw error // Let the dialog handle the error

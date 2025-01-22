@@ -159,15 +159,6 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     return TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))
   }, [account.tag])
 
-  // Copy to clipboard helper
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      // You might want to add a toast notification here
-    } catch (error) {
-      console.error('Failed to copy:', error)
-    }
-  }
 
   const handleCopy = async () => {
     if (!tag) return

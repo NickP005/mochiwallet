@@ -7,7 +7,7 @@ import { CreateWallet } from "@/components/wallet/CreateWallet"
 import { UnlockWallet } from "@/components/wallet/UnlockWallet"
 import { ImportWallet } from "@/components/wallet/ImportWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
-import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkService, useWallet, encrypt, decrypt } from "mochimo-wallet"
+import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkService, useWallet } from "mochimo-wallet"
 
 import { motion } from "framer-motion"
 import { Logo } from "./components/ui/logo"
@@ -21,7 +21,17 @@ type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import' | 'lo
 
 const network = new MeshNetworkService(env.apiUrl)
 NetworkProvider.setNetwork(network)
-const mochimo_secret = 'mochimo_secret'
+
+
+
+//simple encrypt and decrypt functions
+const encrypt = (data: string) => {
+  return Buffer.from(data).toString('base64')
+}
+const decrypt = (data: string) => {
+  return Buffer.from(data, 'base64').toString('utf-8')
+}
+
 export function App() {
   const [view, setView] = useState<WalletView>('loading')
   const [loading, setLoading] = useState(true)
@@ -29,27 +39,26 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const w = useWallet()
   useEffect(() => {
-    console.log('App: Checking session')
     const checkSession = async () => {
       const session = await sessionManager.checkSession()
+      const hasWallet = await w.checkWallet()
+      try {
 
-      if (session.active && session.encryptedPassword) {
-        try {
+        if (session.active && session.encryptedPassword) {
           // Use the encrypted password to unlock the wallet
-          const decryptedPassword = await decrypt(JSON.parse(session.encryptedPassword), mochimo_secret)
-          await w.unlockWallet(Buffer.from(decryptedPassword).toString('utf-8'))
+          const decryptedPassword = decrypt(JSON.parse(session.encryptedPassword))
+          await w.unlockWallet(decryptedPassword)
           setView('dashboard')
-        } catch (error) {
-          console.error('Session check failed:', error)
+        } else if (hasWallet) {
+          setView('unlock')
+        } else {
+          setView('welcome')
         }
-      } else {
-        try {
-          const hasWallet = await w.checkWallet()
-          setView(hasWallet ? 'unlock' : 'welcome')
-        } catch (error) {
-          console.error('Error checking wallet:', error)
-        }
+      } catch (error) {
+        console.error('Session check failed:', error)
+        setView('welcome')
       }
+
       setLoading(false)
     }
 
@@ -58,12 +67,13 @@ export function App() {
 
 
   // Handle successful wallet creation
-  const handleWalletCreated = async (newWallet: any) => {
+  const handleWalletCreated = async (newWallet: any, password: string) => {
     try {
-      console.log('App: Handling wallet creation...')
       setWallet(newWallet)
       setView('dashboard')
-      console.log('App: Transition complete')
+      //start session with the wallet password
+      const encryptedPassword = encrypt(password)
+      sessionManager.startSession(JSON.stringify(encryptedPassword), 100)
     } catch (error) {
       console.error('App: Error handling wallet creation:', error)
     }
@@ -73,7 +83,7 @@ export function App() {
   const handleWalletUnlocked = async (_, password: string) => {
     setView('dashboard')
     //encrypt the password with the mochimo_secret
-    const encryptedPassword = await encrypt(Buffer.from(password, 'utf-8'), mochimo_secret)
+    const encryptedPassword = encrypt(password)
     sessionManager.startSession(JSON.stringify(encryptedPassword), 100)
   }
 

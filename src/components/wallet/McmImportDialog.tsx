@@ -97,7 +97,7 @@ export function McmImportDialog({
             // Extract first 20 bytes (tag) and last 20 bytes (addr hash) from consensus address
             const consensusTag = response.addressConsensus.slice(2, 42) // First 20 bytes (40 hex chars)
             const consensusAddrHash = response.addressConsensus.slice(42, 82) // Last 20 bytes (40 hex chars)
-            console.log("parts", { v2tag: account.tag, wots: account.address, consensusTag, consensusAddrHash, v3Tag, v3AddrHash })
+            // console.log("parts", { v2tag: account.tag, wots: account.address, consensusTag, consensusAddrHash, v3Tag, v3AddrHash })
             // Extract same parts from v3 address
 
             // Check if either part doesn't match
