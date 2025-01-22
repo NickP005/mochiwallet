@@ -165,7 +165,7 @@ class SessionWorkerManager {
 }
 // Initialize the session worker
 const sessionWorker = new SessionWorkerManager({
-  disconnectGracePeriod: 5, // 5 minutes grace period after disconnect
+  disconnectGracePeriod: 15, // 15 minutes grace period after disconnect
   allowedOrigins: [
     'chrome-extension://your-extension-id',
     'moz-extension://your-firefox-id'
