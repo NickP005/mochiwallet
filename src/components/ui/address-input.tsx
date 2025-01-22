@@ -98,7 +98,7 @@ export function AddressInput({
             </Button>
           </PopoverTrigger>
           <PopoverContent 
-            className="p-0 mt-1" 
+            className="w-full p-0 mt-1" 
             align="start"
             style={{ width: containerRef.current?.offsetWidth || 'auto' }}
           >
@@ -107,7 +107,7 @@ export function AddressInput({
                 <button
                   key={option.value}
                   onClick={() => handleOptionSelect(option)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors text-left"
                 >
                   <AccountAvatar
                     name={option.label}
@@ -120,7 +120,7 @@ export function AddressInput({
                     <span className="font-medium text-sm">
                       {option.label}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate">
                       {option.value}
                     </span>
                   </div>

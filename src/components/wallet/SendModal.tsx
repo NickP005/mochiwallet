@@ -425,46 +425,55 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                           <TooltipTrigger asChild>
                             <Info className="h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
-                          <TooltipContent className="max-w-[300px]">
-                            <div className="space-y-3">
+                          <TooltipContent align="start" className="max-w-[280px] p-4">
+                            <div className="space-y-4">
+                              {/* Title */}
                               <div>
-                                <h4 className="font-medium mb-2">Valid memo format:</h4>
-                                <ul className="text-xs space-y-1.5 text-muted-foreground">
-                                  <li className="flex items-start gap-1.5">
-                                    <span className="block mt-1">•</span>
-                                    <span>Only uppercase letters [A-Z], numbers [0-9], and dashes [-]</span>
+                                <h4 className="font-medium text-sm mb-2">Memo Format Rules</h4>
+                                <ul className="space-y-2">
+                                  <li className="flex gap-2 text-xs text-popover-foreground/80">
+                                    <span className="text-primary">•</span>
+                                    <span>Use A-Z, 0-9, and hyphens only</span>
                                   </li>
-                                  <li className="flex items-start gap-1.5">
-                                    <span className="block mt-1">•</span>
-                                    <span>Groups must be either all letters OR all numbers</span>
+                                  <li className="flex gap-2 text-xs text-popover-foreground/80">
+                                    <span className="text-primary">•</span>
+                                    <span>Each group: all letters or all numbers</span>
                                   </li>
-                                  <li className="flex items-start gap-1.5">
-                                    <span className="block mt-1">•</span>
-                                    <span>Different group types must be separated by dashes</span>
+                                  <li className="flex gap-2 text-xs text-popover-foreground/80">
+                                    <span className="text-primary">•</span>
+                                    <span>Use hyphens between different types</span>
                                   </li>
-                                  <li className="flex items-start gap-1.5">
-                                    <span className="block mt-1">•</span>
-                                    <span>Cannot have consecutive groups of the same type</span>
+                                  <li className="flex gap-2 text-xs text-popover-foreground/80">
+                                    <span className="text-primary">•</span>
+                                    <span>No consecutive letter or number groups</span>
                                   </li>
-                                  <li className="flex items-start gap-1.5">
-                                    <span className="block mt-1">•</span>
-                                    <span>Cannot start or end with a dash</span>
+                                  <li className="flex gap-2 text-xs text-popover-foreground/80">
+                                    <span className="text-primary">•</span>
+                                    <span>Cannot start/end with hyphen</span>
                                   </li>
                                 </ul>
                               </div>
 
+                              {/* Examples */}
                               <div className="space-y-2">
-                                <p className="font-medium text-xs">Examples:</p>
-                                <div className="space-y-1.5 text-xs">
+                                <div className="bg-popover-foreground/5 rounded-md p-2">
                                   <div className="flex items-center gap-1.5">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                                    <span className="font-medium">Valid:</span>
-                                    <code className="px-1 bg-muted rounded">AB-12-CD, 123-ABC-456, XYZ, 123</code>
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                                    <span className="text-xs">
+                                      <span className="font-medium">Valid:</span>
+                                      {" "}
+                                      <code className="text-popover-foreground/80">ABC-123, XY-12-Z</code>
+                                    </span>
                                   </div>
+                                </div>
+                                <div className="bg-popover-foreground/5 rounded-md p-2">
                                   <div className="flex items-center gap-1.5">
-                                    <XCircle className="h-3.5 w-3.5 text-destructive" />
-                                    <span className="font-medium">Invalid:</span>
-                                    <code className="px-1 bg-muted rounded">AB-CD-EF, 123-456, ABC-, -123</code>
+                                    <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                    <span className="text-xs">
+                                      <span className="font-medium">Invalid:</span>
+                                      {" "}
+                                      <code className="text-popover-foreground/80">AB-CD, 12-34, -ABC</code>
+                                    </span>
                                   </div>
                                 </div>
                               </div>

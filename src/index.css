@@ -4,53 +4,52 @@
 
 @layer base {
   :root {
-    /* Softer light theme backgrounds */
-    --background: 160 25% 98%; /* Very light mint tint */
-    --foreground: 200 14% 14%; /* Dark charcoal */
+    /* Light theme - Softer, more professional colors */
+    --background: 0 0% 100%; /* Pure white background */
+    --foreground: 200 14% 14%; /* Dark charcoal text */
     
-    --card: 160 20% 99%;
+    --card: 0 0% 100%;
     --card-foreground: 200 14% 14%;
     
-    --popover: 200 14% 14%; /* Dark background */
-    --popover-foreground: 0 0% 100%; /* White text */
+    --popover: 200 14% 14%;
+    --popover-foreground: 0 0% 100%;
     
-    /* Primary mint green */
-    --primary: 160 80% 47%;
+    /* Mint green with better contrast */
+    --primary: 160 84% 39%;  /* Slightly darker mint */
     --primary-foreground: 0 0% 100%;
     
-    /* Forest green */
-    --secondary: 161 83% 38%;
+    /* Complementary green */
+    --secondary: 161 47% 35%;  /* More muted forest green */
     --secondary-foreground: 0 0% 100%;
     
-    /* Softer muted colors */
-    --muted: 200 10% 20%;
-    --muted-foreground: 200 10% 70%;
+    /* Subtle muted colors */
+    --muted: 210 20% 98%; /* Very light blue-grey */
+    --muted-foreground: 215 25% 27%; /* Readable muted text */
     
-    /* Softer accent */
-    --accent: 160 30% 94%;
+    /* Subtle accent for hover states */
+    --accent: 210 20% 97%; /* Slightly blue-tinted grey */
     --accent-foreground: 200 14% 14%;
     
-    /* Borders and inputs */
-    --border: 160 15% 90%;
-    --input: 160 15% 90%;
-    --ring: 160 80% 47%;
+    /* Refined borders and inputs */
+    --border: 215 32% 92%;  /* Subtle blue-grey border */
+    --input: 215 32% 92%;
+    --ring: 160 84% 39%;  /* Matches primary */
 
     --radius: 0.5rem;
 
+    /* Status colors */
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    /* Add success colors */
-    --success: 160 80% 47%;
+    --success: 160 84% 39%;  /* Matches primary */
     --success-foreground: 0 0% 100%;
     
-    /* Add info colors */
     --info: 210 100% 64%;
     --info-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 200 14% 14%;
+    --background: 200 14% 14%; /* Current dark background */
     --foreground: 0 0% 100%;
     
     --card: 200 14% 14%;
@@ -59,11 +58,9 @@
     --popover: 200 14% 14%;
     --popover-foreground: 0 0% 100%;
     
-    /* Primary mint green in dark mode */
     --primary: 160 80% 47%;
     --primary-foreground: 0 0% 100%;
     
-    /* Forest green in dark mode */
     --secondary: 161 83% 38%;
     --secondary-foreground: 0 0% 100%;
     
@@ -73,20 +70,18 @@
     --accent: 200 10% 20%;
     --accent-foreground: 0 0% 100%;
     
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    /* Add success colors */
-    --success: 160 80% 47%;
-    --success-foreground: 0 0% 100%;
-    
-    /* Add info colors */
-    --info: 210 100% 64%;
-    --info-foreground: 0 0% 100%;
-
     --border: 200 10% 20%;
     --input: 200 10% 20%;
     --ring: 160 80% 47%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 80% 47%;
+    --success-foreground: 0 0% 100%;
+    
+    --info: 210 100% 64%;
+    --info-foreground: 0 0% 100%;
   }
 
   /* Typography base styles */
