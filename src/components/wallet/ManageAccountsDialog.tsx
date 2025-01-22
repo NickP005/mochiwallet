@@ -299,87 +299,86 @@ export function ManageAccountsDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent
-        className="h-full max-h-[600px] p-0 flex flex-col"
-        showClose={true}
-      >
-        {/* List View Header */}
-        {view === 'list' && (
-          <div className="flex items-center justify-between p-4 h-14 border-b">
-            <div className="w-8" />
-            <DialogTitle className="flex-1 text-center">Manage Accounts</DialogTitle>
-            <div className="w-8" />
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0 dialog-content">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b p-4">
+          <div className="flex items-center gap-3 flex-1">
+            <h2 className="text-lg font-semibold flex-1 text-center">Manage Accounts</h2>
+            <div className="w-8" /> {/* Spacer to center the title */}
           </div>
-        )}
+        </div>
 
-        <AnimatePresence mode="wait">
-          {view === 'list' ? (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="flex-1 overflow-y-auto p-4"
-            >
-              <Reorder.Group
-                axis="y"
-                values={tempAccounts}
-                onReorder={handleReorder}
-                className="space-y-2"
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <AnimatePresence mode="wait">
+            {view === 'list' ? (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-4"
               >
-                {tempAccounts.map((account) => (
-                  <Reorder.Item
-                    key={account.tag}
-                    value={account}
-                    className="bg-card rounded-lg border"
-                  >
-                    <div className="flex items-center p-3 gap-3">
-                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
-                      <div
-                        className="flex-1 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded p-2"
-                        onClick={() => {
-                          setSelectedAccount(account)
-                          setView('detail')
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <AccountAvatar name={account.name || ''} emoji={account.avatar} tag={account.tag} />
-                          <div>
-                            <p className="font-medium">{account.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatBalance(account.balance || '0')}
-                            </p>
+                {/* Reorderable list */}
+                <Reorder.Group
+                  axis="y"
+                  values={tempAccounts}
+                  onReorder={handleReorder}
+                  className="space-y-2"
+                >
+                  {tempAccounts.map((account) => (
+                    <Reorder.Item
+                      key={account.tag}
+                      value={account}
+                      className="bg-background rounded-lg border touch-none"
+                    >
+                      <div className="flex items-center p-3 gap-3">
+                        <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                        <div
+                          className="flex-1 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded p-2"
+                          onClick={() => {
+                            setSelectedAccount(account)
+                            setView('detail')
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <AccountAvatar name={account.name || ''} emoji={account.avatar} tag={account.tag} />
+                            <div>
+                              <p className="font-medium">{account.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatBalance(account.balance || '0')}
+                              </p>
+                            </div>
                           </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </div>
-                    </div>
-                  </Reorder.Item>
-                ))}
-              </Reorder.Group>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="flex-1"
-            >
-              {selectedAccount && (
-                <DetailView
-                  account={selectedAccount}
-                  onBack={() => {
-                    setView('list')
-                    setTempAccounts(acc.accounts)
-                    setHasChanges(false)
-                  }}
-                  onUpdate={handleAccountUpdate}
-                  onDelete={handleAccountDelete}
-                />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                {selectedAccount && (
+                  <DetailView
+                    account={selectedAccount}
+                    onBack={() => {
+                      setView('list')
+                      setTempAccounts(acc.accounts)
+                      setHasChanges(false)
+                    }}
+                    onUpdate={handleAccountUpdate}
+                    onDelete={handleAccountDelete}
+                  />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Footer with Save/Cancel buttons */}
         {view === 'list' && hasChanges && (

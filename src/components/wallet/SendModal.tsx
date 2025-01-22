@@ -304,7 +304,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0 dialog-content">
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4">
           <div className="flex items-center gap-3 flex-1">
