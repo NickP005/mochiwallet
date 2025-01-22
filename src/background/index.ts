@@ -2,6 +2,7 @@
 console.log('Background script loaded');
 console.log(chrome.runtime)
 
+import "./session/session-worker"
 // Check if we're in a Chrome extension context
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   // Initialize storage and handle messages

@@ -12,6 +12,7 @@ import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkServi
 import { motion } from "framer-motion"
 import { Logo } from "./components/ui/logo"
 import { env } from "./config/env"
+import { sessionManager } from "./lib/services/SessionManager"
 
 // const apiUrl = 'http://46.250.241.212:8081'
 // const apiUrl2 = 'http://35.208.202.76:8080'
@@ -24,26 +25,28 @@ export function App() {
   const [loading, setLoading] = useState(true)
   const [wallet, setWallet] = useState<any>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
   const w = useWallet()
-
-  // Check for existing wallet on load
   useEffect(() => {
-
-    const checkWallet = async () => {
+    console.log('App: Checking session')
+    const checkSession = async () => {
+      const session = await sessionManager.checkSession()
       try {
-
-        const hasWallet = await w.checkWallet()
-
-        setView(hasWallet ? 'unlock' : 'welcome')
+        if (session.active && session.encryptedPassword) {
+          // Use the encrypted password to unlock the wallet
+          await w.unlockWallet(session.encryptedPassword)
+          setView('dashboard')
+        } else {
+          const hasWallet = await w.checkWallet()
+          setView(hasWallet ? 'unlock' : 'welcome')
+        }
       } catch (error) {
-        console.error('Error checking wallet:', error)
+        console.error('Session check failed:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    checkWallet()
+    checkSession()
   }, [])
 
 
@@ -60,8 +63,9 @@ export function App() {
   }
 
   // Handle successful wallet unlock
-  const handleWalletUnlocked = (password: string) => {
+  const handleWalletUnlocked = (_, password: string) => {
     setView('dashboard')
+    sessionManager.startSession(password, 100)
   }
 
   // Add handler for successful import
@@ -160,6 +164,14 @@ export function App() {
             onWalletImported={handleWalletImported}
             onBack={() => setView('welcome')}
           />
+        </WalletLayout>
+      )
+    default:
+      return (
+        <WalletLayout>
+          <div className="flex items-center justify-center h-full">
+            <p>Loading...</p>
+          </div>
         </WalletLayout>
       )
   }
