@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { useWallet } from 'mochimo-wallet'
 
 interface UnlockWalletProps {
-  onUnlock: (wallet: any, password: string) => void
+  onUnlock: (wallet: any, jwk: JsonWebKey) => void
 }
 
 export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
@@ -22,8 +22,11 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
     setError(null)
     setLoading(true)
     try {
-      await w.unlockWallet(password)
-      onUnlock(w, password)
+      const { jwk } = await w.unlockWallet(password)
+      if (!jwk) {
+        throw new Error('Failed to unlock wallet')
+      }
+      onUnlock(w, jwk)
     } catch (error) {
       console.error('Error unlocking wallet:', error)
       setError(error instanceof Error ? error.message : 'Invalid password')

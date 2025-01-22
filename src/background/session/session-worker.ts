@@ -12,7 +12,7 @@ interface SessionWorkerMessage {
 
 class SessionWorkerManager {
   private sessionData: {
-    encryptedPassword?: string
+    jwk?: string
     disconnectedAt?: number
   } = {}
   
@@ -72,7 +72,7 @@ class SessionWorkerManager {
 
   private handleDisconnect() {
     // If this was the last connection, start the grace period
-    if (this.connections.size === 0 && this.sessionData.encryptedPassword) {
+    if (this.connections.size === 0 && this.sessionData.jwk) {
       this.sessionData.disconnectedAt = Date.now()
       
       // Set timeout to end session after grace period
@@ -125,15 +125,15 @@ class SessionWorkerManager {
     }
   }
 
-  private handleStartSession(payload: { encryptedPassword: string }): void {
+  private handleStartSession(payload: { jwk: string }): void {
     this.sessionData = {
-      encryptedPassword: payload.encryptedPassword,
+      jwk: payload.jwk,
       disconnectedAt: undefined
     }
   }
 
-  private handleCheckSession(): { active: boolean, encryptedPassword?: string } {
-    if (!this.sessionData.encryptedPassword) {
+  private handleCheckSession(): { active: boolean, jwk?: string } {
+    if (!this.sessionData.jwk) {
       return { active: false }
     }
 
@@ -148,7 +148,7 @@ class SessionWorkerManager {
 
     return {
       active: true,
-      encryptedPassword: this.sessionData.encryptedPassword
+      jwk: this.sessionData.jwk
     }
   }
 

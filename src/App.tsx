@@ -7,7 +7,7 @@ import { CreateWallet } from "@/components/wallet/CreateWallet"
 import { UnlockWallet } from "@/components/wallet/UnlockWallet"
 import { ImportWallet } from "@/components/wallet/ImportWallet"
 import { WalletDashboard } from "@/components/wallet/WalletDashboard"
-import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkService, useWallet } from "mochimo-wallet"
+import { NetworkProvider, ProxyNetworkService, StorageProvider, MeshNetworkService, useWallet, MasterSeed } from "mochimo-wallet"
 
 import { motion } from "framer-motion"
 import { Logo } from "./components/ui/logo"
@@ -44,10 +44,10 @@ export function App() {
       const hasWallet = await w.checkWallet()
       try {
 
-        if (session.active && session.encryptedPassword) {
+        if (session.active && session.jwk) {
           // Use the encrypted password to unlock the wallet
-          const decryptedPassword = decrypt(JSON.parse(session.encryptedPassword))
-          await w.unlockWallet(decryptedPassword)
+          console.log(session.jwk)
+          await w.unlockWallet(session.jwk, 'jwk')
           setView('dashboard')
         } else if (hasWallet) {
           setView('unlock')
@@ -67,24 +67,22 @@ export function App() {
 
 
   // Handle successful wallet creation
-  const handleWalletCreated = async (newWallet: any, password: string) => {
+  const handleWalletCreated = async (newWallet: any, jwk: JsonWebKey) => {
     try {
       setWallet(newWallet)
       setView('dashboard')
       //start session with the wallet password
-      const encryptedPassword = encrypt(password)
-      sessionManager.startSession(JSON.stringify(encryptedPassword), 100)
+      sessionManager.startSession(JSON.stringify(jwk), 100)
     } catch (error) {
       console.error('App: Error handling wallet creation:', error)
     }
   }
 
   // Handle successful wallet unlock
-  const handleWalletUnlocked = async (_, password: string) => {
+  const handleWalletUnlocked = async (_, jwk: JsonWebKey) => {
     setView('dashboard')
     //encrypt the password with the mochimo_secret
-    const encryptedPassword = encrypt(password)
-    sessionManager.startSession(JSON.stringify(encryptedPassword), 100)
+    sessionManager.startSession(JSON.stringify(jwk), 100)
   }
 
   // Add handler for successful import

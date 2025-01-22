@@ -36,9 +36,9 @@ export class SessionManager {
     })
   }
 
-  async startSession(encryptedPassword: string, duration?: number): Promise<void> {
-    console.log('SessionManager: Starting session', encryptedPassword, duration)
-    const response = await this.sendMessage('startSession', { encryptedPassword, duration })
+  async startSession(jwk: string, duration?: number): Promise<void> {
+    console.log('SessionManager: Starting session', jwk, duration)
+    const response = await this.sendMessage('startSession', { jwk, duration })
     if (!response.success) {
       throw new Error(response.error || 'Failed to start session')
     }
@@ -51,7 +51,7 @@ export class SessionManager {
     }
   }
 
-  async checkSession(): Promise<{ active: boolean, encryptedPassword?: string }> {
+  async checkSession(): Promise<{ active: boolean, jwk?: string }> {
     const response = await this.sendMessage('checkSession')
     if (!response.success) {
       throw new Error(response.error || 'Failed to check session')
