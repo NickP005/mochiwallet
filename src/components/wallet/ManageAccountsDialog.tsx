@@ -14,12 +14,16 @@ import {
   GripVertical,
   Loader2,
   Smile,
-  Trash2
+  Trash2,
+  Tag as At,
+  Hash,
+  Key
 } from 'lucide-react'
 import { Account, useAccounts } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
 import { TagUtils } from "mochimo-wots"
+import * as Portal from '@radix-ui/react-portal'
 
 interface ManageAccountsDialogProps {
   isOpen: boolean
@@ -65,152 +69,129 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 h-14 border-b">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="h-8 w-8 p-0"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <DialogTitle>Account Details</DialogTitle>
-        <div className="w-8" />
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Avatar Section */}
-        <div className="flex flex-col items-center gap-3 py-4">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-20 w-20 text-3xl relative"
+    <div className="space-y-6">
+      {/* Avatar and Name Section */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div 
+            className="cursor-pointer"
             onClick={() => setShowEmojiPicker(true)}
           >
-            {account.avatar || getInitials(account.name || '')}
-            <div className="absolute bottom-1 right-1">
-              <Smile className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </Button>
+            <AccountAvatar
+              name={account.name || ''}
+              emoji={account.avatar}
+              tag={account.tag}
+              className="h-20 w-20"
+              textClassName="text-2xl"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute bottom-0 right-0 h-6 w-6 rounded-full bg-background"
+            >
+              <Smile className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          {/* Emoji Picker */}
           {showEmojiPicker && (
-            <div className="absolute z-50">
-              <div
-                className="fixed inset-0"
+            <>
+              <div 
+                className="fixed inset-0 z-50"
                 onClick={() => setShowEmojiPicker(false)}
               />
-              <EmojiPicker
-                onEmojiClick={handleEmojiSelect}
-                width={320}
-                height={400}
-                theme={emojiPickerTheme}
-                skinTonesDisabled
-              />
-            </div>
+              <div 
+                className="absolute z-50 left-1/2 -translate-x-1/2"
+                style={{ top: 'calc(100% + 8px)' }}
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiSelect}
+                  width={320}
+                  height={400}
+                  theme={emojiPickerTheme}
+                  skinTonesDisabled
+                />
+              </div>
+            </>
           )}
         </div>
 
-        {/* Account Details Content */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Account Name</label>
-            <div className="flex gap-2">
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Enter account name"
-                disabled={isSaving}
-              />
-              <Button
-                onClick={handleNameUpdate}
-                disabled={!newName.trim() || newName === account.name || isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-            </div>
-          </div>
+        <div className="w-full flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onBlur={handleNameUpdate}
+            placeholder="Account Name"
+            className="flex-1"
+          />
+          <Button 
+            variant="outline" 
+            onClick={handleNameUpdate}
+            disabled={newName === account.name}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
 
-          <div className="space-y-3 bg-muted/50 rounded-lg p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Tag</span>
-              <div className="max-w-[70%]">
-                <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs break-all">
-                  {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))}
-                </code>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Index</span>
-              <span>{account.index}</span>
-            </div>
+      {/* Account Info Section */}
+      <div className="space-y-4 bg-muted/50 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <At className="h-4 w-4 text-primary" />
           </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm text-muted-foreground mb-1">Tag</div>
+            <code className="text-xs font-mono break-all">
+              {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))}
+            </code>
+          </div>
+        </div>
 
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-between"
-              onClick={() => setShowSecret(!showSecret)}
-            >
-              <span>Show Secret Phrase</span>
-              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-            {showSecret && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-muted/50 p-3 rounded-lg"
-              >
-                <code className="text-xs break-all">{account.seed}</code>
-              </motion.div>
-            )}
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Hash className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground mb-1">Index</div>
+            <div className="text-sm">{account.index}</div>
           </div>
         </div>
       </div>
 
-      {/* Fixed Footer */}
-      <div className="border-t p-4">
-        {!showDeleteConfirm ? (
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Remove Account
-          </Button>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <p className="text-sm font-medium">Are you sure?</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => onDelete(account.tag)}
-              >
-                Remove
-              </Button>
-            </div>
+      {/* Secret Phrase Section */}
+      <div className="space-y-2">
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setShowSecret(!showSecret)}
+        >
+          <div className="flex items-center gap-2">
+            <Key className="h-4 w-4 text-primary" />
+            <span>Secret Phrase</span>
           </div>
+          {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
+        {showSecret && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-muted/50 p-4 rounded-lg"
+          >
+            <code className="text-xs break-all">{account.seed}</code>
+          </motion.div>
         )}
       </div>
+
+      {/* Delete Account Button */}
+      <Button
+        variant="destructive"
+        className="w-full"
+        onClick={() => setShowDeleteConfirm(true)}
+      >
+        <Trash2 className="h-4 w-4 mr-2" />
+        Remove Account
+      </Button>
     </div>
   )
 }
@@ -302,11 +283,29 @@ export function ManageAccountsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0 dialog-content">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4">
+        {/* Dynamic Header */}
+        <div className="flex items-center h-14 border-b p-4">
           <div className="flex items-center gap-3 flex-1">
-            <h2 className="text-lg font-semibold flex-1 text-center">Manage Accounts</h2>
-            <div className="w-8" /> {/* Spacer to center the title */}
+            <div className="w-8">
+              {view === 'detail' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setView('list')
+                    setTempAccounts(acc.accounts)
+                    setHasChanges(false)
+                  }}
+                  className="h-8 w-8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <h2 className="text-lg font-semibold flex-1 text-center">
+              {view === 'list' ? 'Manage Accounts' : 'Account Details'}
+            </h2>
+            <div className="w-8" /> {/* Consistent spacer for both views */}
           </div>
         </div>
 
