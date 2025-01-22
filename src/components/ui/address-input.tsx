@@ -19,24 +19,27 @@ interface AddressOption {
   description?: string
 }
 
-interface AddressInputProps {
+interface AddressInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   value: string
-  onValueChange: (value: string) => void
-  options: AddressOption[]
+  onChange: (value: string) => void
+  onBlur?: (value: string) => void
+  options?: AddressOption[]
+  error?: boolean
+  onErrorChange?: (error: boolean) => void
   placeholder?: string
   className?: string
-  error?: boolean
-  onValidate?: (error: string | null) => void
 }
 
 export function AddressInput({
   value,
-  onValueChange,
-  options,
+  onChange,
+  onBlur,
+  options = [],
+  error,
+  onErrorChange,
   placeholder = "Enter address",
   className,
-  error,
-  onValidate
+  ...props
 }: AddressInputProps) {
   const [open, setOpen] = React.useState(false)
   const selectedOption = options.find(opt => opt.value === value)
@@ -60,19 +63,25 @@ export function AddressInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
-    onValueChange(newValue)
-    onValidate?.(null)
+    onChange(newValue)
   }
 
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const trimmedValue = e.target.value.trim()
     
     if (trimmedValue !== e.target.value) {
-      onValueChange(trimmedValue)
+      onChange(trimmedValue)
     }
 
     const error = validateAddress(trimmedValue)
-    onValidate?.(error)
+    onErrorChange?.(!!error)
+    onBlur?.(trimmedValue)
+  }
+
+  const handleOptionSelect = (option: AddressOption) => {
+    onChange(option.value)
+    onErrorChange?.(false)
+    setOpen(false)
   }
 
   return (
@@ -97,10 +106,7 @@ export function AddressInput({
               {options.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => {
-                    onValueChange(option.value)
-                    setOpen(false)
-                  }}
+                  onClick={() => handleOptionSelect(option)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent text-left"
                 >
                   <AccountAvatar
@@ -147,7 +153,7 @@ export function AddressInput({
               className="h-6 w-6 p-0 hover:bg-background/80"
               onClick={(e) => {
                 e.stopPropagation();
-                onValueChange('');
+                onChange('');
               }}
             >
               <X className="h-4 w-4" />
@@ -163,6 +169,7 @@ export function AddressInput({
               "pl-10",
               error && "border-destructive focus-visible:ring-destructive"
             )}
+            {...props}
           />
         )}
       </div>

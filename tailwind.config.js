@@ -88,10 +88,26 @@ module.exports = {
   				charcoal: '#1D2A2E',
   				slate: '#172124',
   			},
-  			success: '#15DC96',
-  			warning: '#FFB547',
-  			error: '#FF4747',
-  			info: '#47B0FF',
+  			success: {
+  				DEFAULT: '#15DC96',
+  				foreground: '#FFFFFF',
+  				muted: '#15DC9620'
+  			},
+  			error: {
+  				DEFAULT: '#FF4747',
+  				foreground: '#FFFFFF',
+  				muted: '#FF474720'
+  			},
+  			warning: {
+  				DEFAULT: '#FFB547',
+  				foreground: '#FFFFFF',
+  				muted: '#FFB54720'
+  			},
+  			info: {
+  				DEFAULT: '#47B0FF',
+  				foreground: '#FFFFFF',
+  				muted: '#47B0FF20'
+  			},
   			muted: {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'

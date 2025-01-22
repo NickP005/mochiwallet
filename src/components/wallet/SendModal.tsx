@@ -1,27 +1,24 @@
-import { useState, useEffect } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useTransaction, useWallet, useAccounts } from 'mochimo-wallet'
-import { CheckCircle2, Loader2, Copy, Search, ArrowLeft, ArrowRight, ArrowDownUp, Wallet, SendHorizontal, Coins, Receipt } from 'lucide-react'
-import { TagUtils } from 'mochimo-wots'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import { AccountAvatar } from '../ui/account-avatar'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Combobox } from "@/components/ui/combobox"
 import { AddressInput } from "@/components/ui/address-input"
 import { AmountInput } from "@/components/ui/amount-input"
+import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown } from "lucide-react"
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from "@/lib/utils"
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowDownUp, ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Coins, Copy, Loader2, Receipt, SendHorizontal, Wallet, Info, MessageSquare, XCircle } from 'lucide-react'
+import { useAccounts, useTransaction, useWallet } from 'mochimo-wallet'
+import { TagUtils } from 'mochimo-wots'
+import { useEffect, useState } from 'react'
+import { AccountAvatar } from '../ui/account-avatar'
+import {isValidMemo} from "mochimo-mesh-api-client"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface SendModalProps {
   isOpen: boolean
@@ -50,10 +47,33 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
   const [fee, setFee] = useState("500") // 500 nano MCM default
   const [amountError, setAmountError] = useState<string | null>(null)
   const [destinationError, setDestinationError] = useState<string | null>(null)
+  const [memo, setMemo] = useState("")
+  const [memoError, setMemoError] = useState<string | null>(null)
 
   const w = useWallet()
   const acc = useAccounts()
   const tx = useTransaction()
+
+  // Add reset function
+  const resetModal = () => {
+    setDestination('')
+    setAmount('')
+    setMemo('')
+    setError(null)
+    setSuccess(null)
+    setStep('details')
+    setShowAdvanced(false)
+    setFee('500')
+    setAmountError(null)
+    setDestinationError(null)
+    setMemoError(null)
+    setTransactionDetails(null)
+  }
+
+  // Reset when selected account changes
+  useEffect(() => {
+    resetModal()
+  }, [acc.selectedAccount])
 
   // Add click outside handler for command
   useEffect(() => {
@@ -118,6 +138,51 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
     setAmountError(error)
   }
 
+  const validateMemo = (value: string) => {
+    const trimmedValue = value.trim()
+    
+    if (!trimmedValue) return null
+    
+    if (!isValidMemo(trimmedValue)) {
+      return 'Invalid memo format. Please refer to the memo format guidelines by hovering over the info icon.'
+    }
+
+    return null
+  }
+
+  const handleMemoBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const trimmedValue = e.target.value.trim()
+    
+    if (trimmedValue !== e.target.value) {
+      setMemo(trimmedValue)
+    }
+
+    const error = validateMemo(trimmedValue)
+    setMemoError(error)
+  }
+
+  const validateDestination = (value: string) => {
+    const trimmedValue = value.trim()
+    
+    if (!trimmedValue) {
+      return 'Destination is required'
+    }
+    
+    if (trimmedValue.length !== 30) {
+      return 'Tag must be exactly 30 characters'
+    }
+
+    if (!TagUtils.validateBase58Tag(trimmedValue)) {
+      return 'Invalid tag format'
+    }
+
+    if (trimmedValue === currentAccountBase58) {
+      return 'Cannot send to the same account'
+    }
+
+    return null
+  }
+
   const handleNext = async () => {
     try {
       if (!destination || !amount) {
@@ -131,6 +196,10 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
       const error = validateAmount(amount)
       if (error) {
         throw new Error(error)
+      }
+
+      if (memo && !isValidMemo(memo)) {
+        throw new Error('Invalid memo format')
       }
 
       const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1e9))
@@ -176,7 +245,11 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
       }
       const recipientTagHex = Buffer.from(recipientTagBytes).toString('hex')
 
-      const result = await tx.sendTransaction(recipientTagHex, BigInt(transactionDetails!.amount)) 
+      const result = await tx.sendTransaction(
+        recipientTagHex, 
+        BigInt(transactionDetails!.amount),
+        memo || undefined // Only include memo if it's not empty
+      ) 
 
       if (result) {
         await acc.updateAccount(acc.selectedAccount!, { wotsIndex: currAccount.wotsIndex + 1 })
@@ -195,11 +268,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
 
   const handleClose = () => {
     if (!sending) {
-      setDestination('')
-      setAmount('')
-      setError(null)
-      setSuccess(null)
-      setStep('details')
+      resetModal()
       onClose()
     }
   }
@@ -299,11 +368,22 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     <Label>Destination</Label>
                     <AddressInput
                       value={destination}
-                      onValueChange={setDestination}
+                      onChange={(value) => {
+                        setDestination(value)
+                        setDestinationError(null)
+                      }}
+                      onBlur={(value) => {
+                        const error = validateDestination(value)
+                        setDestinationError(error)
+                      }}
                       options={addressOptions}
                       placeholder="Enter destination tag"
                       error={!!destinationError}
-                      onValidate={setDestinationError}
+                      onErrorChange={(hasError) => {
+                        if (!hasError) {
+                          setDestinationError(null)
+                        }
+                      }}
                     />
                     {destinationError && (
                       <p className="text-sm text-destructive">
@@ -332,6 +412,82 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     {amountError && (
                       <p className="text-sm text-destructive">
                         {amountError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Memo field */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Memo</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[300px]">
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="font-medium mb-2">Valid memo format:</h4>
+                                <ul className="text-xs space-y-1.5 text-muted-foreground">
+                                  <li className="flex items-start gap-1.5">
+                                    <span className="block mt-1">•</span>
+                                    <span>Only uppercase letters [A-Z], numbers [0-9], and dashes [-]</span>
+                                  </li>
+                                  <li className="flex items-start gap-1.5">
+                                    <span className="block mt-1">•</span>
+                                    <span>Groups must be either all letters OR all numbers</span>
+                                  </li>
+                                  <li className="flex items-start gap-1.5">
+                                    <span className="block mt-1">•</span>
+                                    <span>Different group types must be separated by dashes</span>
+                                  </li>
+                                  <li className="flex items-start gap-1.5">
+                                    <span className="block mt-1">•</span>
+                                    <span>Cannot have consecutive groups of the same type</span>
+                                  </li>
+                                  <li className="flex items-start gap-1.5">
+                                    <span className="block mt-1">•</span>
+                                    <span>Cannot start or end with a dash</span>
+                                  </li>
+                                </ul>
+                              </div>
+
+                              <div className="space-y-2">
+                                <p className="font-medium text-xs">Examples:</p>
+                                <div className="space-y-1.5 text-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                                    <span className="font-medium">Valid:</span>
+                                    <code className="px-1 bg-muted rounded">AB-12-CD, 123-ABC-456, XYZ, 123</code>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <XCircle className="h-3.5 w-3.5 text-destructive" />
+                                    <span className="font-medium">Invalid:</span>
+                                    <code className="px-1 bg-muted rounded">AB-CD-EF, 123-456, ABC-, -123</code>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Input
+                      value={memo}
+                      onChange={(e) => {
+                        setMemo(e.target.value)
+                        setMemoError(null)
+                      }}
+                      onBlur={handleMemoBlur}
+                      placeholder="Optional memo"
+                      className={cn(
+                        memoError && "border-destructive focus-visible:ring-destructive"
+                      )}
+                    />
+                    {memoError && (
+                      <p className="text-sm text-destructive">
+                        {memoError}
                       </p>
                     )}
                   </div>
@@ -462,29 +618,21 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     {/* Transaction Details */}
                     <div className="space-y-3">
                       {/* Amount */}
-                      <div className="flex items-start gap-2">
-                        <div className="h-8 w-8 shrink-0 rounded-full bg-muted/50 flex items-center justify-center">
-                          <Coins className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-muted-foreground text-xs">Amount</Label>
-                          <p className="text-base font-mono font-medium">
-                            {formatMCM(transactionDetails.amount)}
-                          </p>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-5 w-5 text-muted-foreground" />
+                        <span>Amount</span>
+                        <span className="ml-auto text-sm font-mono">
+                          {formatBalance(transactionDetails?.amount.toString())} MCM
+                        </span>
                       </div>
 
                       {/* Network Fee */}
-                      <div className="flex items-start gap-2">
-                        <div className="h-8 w-8 shrink-0 rounded-full bg-muted/50 flex items-center justify-center">
-                          <Receipt className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-muted-foreground text-xs">Network Fee</Label>
-                          <p className="text-base font-mono">
-                            {formatMCM(transactionDetails.fee)}
-                          </p>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Receipt className="h-5 w-5 text-muted-foreground" />
+                        <span>Network Fee</span>
+                        <span className="ml-auto text-sm font-mono">
+                          {formatBalance(transactionDetails?.fee.toString())} MCM
+                        </span>
                       </div>
                     </div>
 
@@ -492,19 +640,36 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
 
                     {/* Totals */}
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label className="text-muted-foreground text-sm">Total Amount</Label>
-                        <p className="text-base font-mono font-bold">
-                          {formatMCM(transactionDetails.total)}
-                        </p>
+                      <div className="flex items-center gap-2 font-medium">
+                        <span>Total Amount</span>
+                        <span className="ml-auto text-sm font-mono">
+                          {formatBalance(transactionDetails?.total.toString())} MCM
+                        </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <Label className="text-muted-foreground text-sm">Remaining Balance</Label>
-                        <p className="text-base font-mono">
-                          {formatMCM(transactionDetails.change)}
-                        </p>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>Remaining Balance</span>
+                        <span className="ml-auto text-sm font-mono">
+                          {formatBalance(transactionDetails?.change.toString())} MCM
+                        </span>
                       </div>
                     </div>
+
+                    {memo && (
+                      <>
+                        <div className="h-px bg-border" />
+                        <div className="flex items-start gap-2">
+                          <div className="h-8 w-8 shrink-0 rounded-full bg-muted/50 flex items-center justify-center">
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-muted-foreground text-xs">Memo</Label>
+                            <p className="text-base break-words">
+                              {memo}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -513,27 +678,28 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center gap-4 py-8"
+                  className="flex flex-col items-center gap-4 py-8 px-4"
                 >
                   <div className="h-12 w-12 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold mb-2">Transaction Sent!</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-lg font-semibold">Transaction Sent!</h3>
+                    <p className="text-sm text-muted-foreground">
                       Your transaction has been successfully broadcast to the network
                     </p>
-                    <div className="flex items-center gap-2 justify-center">
-                      <code className="px-2 py-1 bg-muted rounded text-xs">
+                    <div className="flex flex-col items-center gap-2">
+                      <code className="px-2 py-1 bg-muted rounded text-xs break-all max-w-full">
                         {success.txid}
                       </code>
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
+                        size="sm"
+                        className="h-8"
                         onClick={() => navigator.clipboard.writeText(success.txid)}
                       >
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Transaction ID
                       </Button>
                     </div>
                   </div>
@@ -567,7 +733,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
             {step === 'details' && (
               <Button
                 onClick={handleNext}
-                disabled={!destination || !amount || !!destinationError || !!amountError}
+                disabled={!destination || !amount || !!destinationError || !!amountError || !!memoError}
               >
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />

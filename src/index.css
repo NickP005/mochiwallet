@@ -11,8 +11,8 @@
     --card: 160 20% 99%;
     --card-foreground: 200 14% 14%;
     
-    --popover: 160 20% 99%;
-    --popover-foreground: 200 14% 14%;
+    --popover: 200 14% 14%; /* Dark background */
+    --popover-foreground: 0 0% 100%; /* White text */
     
     /* Primary mint green */
     --primary: 160 80% 47%;
@@ -23,8 +23,8 @@
     --secondary-foreground: 0 0% 100%;
     
     /* Softer muted colors */
-    --muted: 160 25% 95%;
-    --muted-foreground: 200 10% 40%;
+    --muted: 200 10% 20%;
+    --muted-foreground: 200 10% 70%;
     
     /* Softer accent */
     --accent: 160 30% 94%;
@@ -39,6 +39,14 @@
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Add success colors */
+    --success: 160 80% 47%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Add info colors */
+    --info: 210 100% 64%;
+    --info-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -59,14 +67,22 @@
     --secondary: 161 83% 38%;
     --secondary-foreground: 0 0% 100%;
     
-    --muted: 200 10% 20%;
-    --muted-foreground: 200 10% 60%;
+    --muted: 200 10% 25%;
+    --muted-foreground: 200 10% 70%;
     
     --accent: 200 10% 20%;
     --accent-foreground: 0 0% 100%;
     
-    --destructive: 346 84% 61%; /* Using #FF3355 */
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Add success colors */
+    --success: 160 80% 47%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Add info colors */
+    --info: 210 100% 64%;
+    --info-foreground: 0 0% 100%;
 
     --border: 200 10% 20%;
     --input: 200 10% 20%;
