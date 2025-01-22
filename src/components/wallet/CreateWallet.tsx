@@ -58,6 +58,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       const wallet = await w.createWallet(password, await masterSeed.toPhrase())
 
       const { jwk } = await w.unlockWallet(password)
+      if (!jwk) throw new Error('Failed to unlock wallet')
       //create a first account
       const a = await ac.createAccount("Account 1")
       ac.setSelectedAccount(a.tag)
