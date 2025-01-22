@@ -306,22 +306,22 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0">
         {/* Header */}
-        <div className="border-b p-4 flex items-center gap-3">
-          {step !== 'details' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleBack}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <h2 className="text-lg font-semibold">
-            {step === 'details' && 'Send MCM'}
-            {step === 'confirm' && 'Confirm Transaction'}
-            {step === 'success' && 'Transaction Sent'}
-          </h2>
+        <div className="flex items-center justify-between border-b p-4">
+          <div className="flex items-center gap-3 flex-1">
+            {step !== 'details' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleBack}
+                disabled={sending}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <h2 className="text-lg font-semibold flex-1 text-center">Send MCM</h2>
+            <div className="w-8" /> {/* Spacer to center the title */}
+          </div>
         </div>
 
         {/* Content */}
