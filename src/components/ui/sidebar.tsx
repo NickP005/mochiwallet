@@ -57,9 +57,9 @@ export function Sidebar({
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/20 z-10"
+              className="absolute inset-0 bg-foreground/5 dark:bg-black/20 z-10"
               onClick={() => onOpenChange(false)}
             />
 

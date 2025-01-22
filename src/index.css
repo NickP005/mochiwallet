@@ -130,12 +130,16 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30 transition-colors;
+    @apply bg-border hover:bg-border/80 dark:bg-muted-foreground/20 dark:hover:bg-muted-foreground/30 rounded-full transition-colors;
   }
 
   /* Firefox */
   * {
     scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .dark * {
     scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
   }
 
@@ -172,6 +176,6 @@
   }
   /* Add custom card styles */
   .card-hover {
-    @apply hover:shadow-lg hover:border-primary/20 transition-all duration-200;
+    @apply hover:shadow-lg hover:border-primary/20 transition-all duration-150;
   }
 }
