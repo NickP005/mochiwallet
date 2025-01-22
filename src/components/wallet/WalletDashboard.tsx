@@ -63,7 +63,7 @@ export function WalletDashboard({
       <Sidebar
         accounts={Object.values(accounts)}
         selectedAccount={acc.selectedAccount}
-        onSelectAccount={a=>acc.setSelectedAccount(a.tag)}
+        onSelectAccount={a => acc.setSelectedAccount(a.tag)}
         onCreateAccount={() => setAddAccountOpen(true)}
         onManageAccounts={() => setManageAccountsOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}

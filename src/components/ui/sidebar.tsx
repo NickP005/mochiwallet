@@ -33,7 +33,12 @@ export function Sidebar({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('sidebar')
-      if (isOpen && sidebar && !sidebar.contains(event.target as Node)) {
+      const menuButton = document.getElementById('menu-button')
+      if (isOpen && 
+          sidebar && 
+          !sidebar.contains(event.target as Node) && 
+          menuButton && 
+          !menuButton.contains(event.target as Node)) {
         onOpenChange(false)
       }
     }

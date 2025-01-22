@@ -155,7 +155,8 @@ export function App() {
       return (
         <WalletLayout
           showMenu
-          onMenuClick={() => setSidebarOpen(true)}
+          sidebarOpen={sidebarOpen}
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         >
           <WalletDashboard
             wallet={wallet}

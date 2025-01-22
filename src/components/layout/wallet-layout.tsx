@@ -11,12 +11,14 @@ interface WalletLayoutProps {
   children: ReactNode
   showMenu?: boolean
   onMenuClick?: () => void
+  sidebarOpen?: boolean
 }
 
 export function WalletLayout({ 
   children, 
   showMenu = false, 
-  onMenuClick 
+  onMenuClick,
+  sidebarOpen = false
 }: WalletLayoutProps) {
   const { viewMode, toggleViewMode, isExtension } = useViewMode()
   
@@ -31,10 +33,14 @@ export function WalletLayout({
         <div className="flex items-center gap-3">
           {showMenu ? (
             <Button
+              id="menu-button"
               variant="ghost"
               size="icon"
               onClick={onMenuClick}
-              className="hover:bg-primary/10"
+              className={cn(
+                "hover:bg-primary/10",
+                sidebarOpen && "bg-primary/10"
+              )}
             >
               <Menu className="h-5 w-5 text-foreground/80" />
             </Button>
