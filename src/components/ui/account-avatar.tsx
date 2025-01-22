@@ -9,9 +9,10 @@ interface AccountAvatarProps {
   tag: string
   emoji?: string
   className?: string
+  textClassName?: string
 }
 
-export function AccountAvatar({ name, tag, emoji, className }: AccountAvatarProps) {
+export function AccountAvatar({ name, tag, emoji, className, textClassName }: AccountAvatarProps) {
   const color = useMemo(() => generateColorFromTag(tag), [tag])
   
   return (
@@ -25,7 +26,9 @@ export function AccountAvatar({ name, tag, emoji, className }: AccountAvatarProp
             {emoji}
           </span>
         ) : (
-          getInitials(name)
+          <span className={cn("text-sm", textClassName)}>
+            {getInitials(name)}
+          </span>
         )}
       </AvatarFallback>
     </Avatar>

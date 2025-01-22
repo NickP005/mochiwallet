@@ -330,7 +330,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                   <Button
                     size="lg"
                     onClick={() => setSendModalOpen(true)}
-                    disabled={!isActivated}
+                    // disabled={!isActivated}
                     className={cn(
                       "w-full h-24 relative overflow-hidden group",
                       isActivated

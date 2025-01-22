@@ -36,6 +36,9 @@
     --ring: 160 80% 47%;
 
     --radius: 0.5rem;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
   }
 
   .dark {
@@ -62,8 +65,8 @@
     --accent: 200 10% 20%;
     --accent-foreground: 0 0% 100%;
     
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 346 84% 61%; /* Using #FF3355 */
+    --destructive-foreground: 210 40% 98%;
 
     --border: 200 10% 20%;
     --input: 200 10% 20%;
