@@ -18,22 +18,19 @@ class SessionWorkerManager {
   
   private connections: Map<string, chrome.runtime.Port> = new Map()
   private allowedOrigins: Set<string>
-  private allowedExtensionIds: Set<string>
 
   private disconnectGracePeriod: number
   private lockTimeout?: NodeJS.Timeout
 
   constructor(config: SessionConfig) {
     this.allowedOrigins = new Set(config.allowedOrigins || [])
-    this.allowedExtensionIds = new Set(config.allowedExtensionIds || [])
     this.disconnectGracePeriod = (config.disconnectGracePeriod || 5) * 60 * 1000
-    
     chrome.runtime.onConnect.addListener(this.handleConnection.bind(this))
   }
 
   private verifyOrigin(port: chrome.runtime.Port): boolean {
-    if (port.sender?.id) {
-      return this.allowedExtensionIds.has(port.sender.id)
+    if (port.sender?.id === chrome.runtime.id) {
+      return true
     }
     if (port.sender?.origin) {
       return this.allowedOrigins.has(port.sender.origin)
@@ -202,14 +199,8 @@ class SessionWorkerManager {
 }
 // Initialize the session worker
 const sessionWorker = new SessionWorkerManager({
-  disconnectGracePeriod: 15, // 15 minutes grace period after disconnect
-  allowedOrigins: [
-    'chrome-extension://your-extension-id',
-    'moz-extension://your-firefox-id'
-  ],
-  allowedExtensionIds: [
-    "hdbpfdmjfcnbndgcifjfjiggjbhimgno"
-  ]
+  disconnectGracePeriod: 15, // 15 minutes
+  allowedOrigins: [] // Only allow connections from our own extension
 })
 
 // Listen for extension shutdown/unload
