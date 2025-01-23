@@ -19,7 +19,7 @@ interface AddressOption {
   description?: string
 }
 
-interface AddressInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+interface AddressInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onBlur'> {
   value: string
   onChange: (value: string) => void
   onBlur?: (value: string) => void

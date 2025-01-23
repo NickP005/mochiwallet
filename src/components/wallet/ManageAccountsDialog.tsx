@@ -23,7 +23,7 @@ import { Account, useAccounts } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
 import { TagUtils } from "mochimo-wots"
-import * as Portal from '@radix-ui/react-portal'
+
 
 interface ManageAccountsDialogProps {
   isOpen: boolean

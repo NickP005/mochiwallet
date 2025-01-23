@@ -358,7 +358,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     <div className="flex justify-between items-center text-sm px-1">
                       <span className="text-muted-foreground">Available Balance:</span>
                       <span className="font-mono">
-                        {formatBalance(currentAccount?.balance)} MCM
+                        {formatBalance(currentAccount?.balance || '0')} MCM
                       </span>
                     </div>
                   </div>
