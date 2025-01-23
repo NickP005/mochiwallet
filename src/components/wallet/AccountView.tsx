@@ -9,7 +9,8 @@ import {
   RefreshCcw,
   Send,
   Tag as TagIcon,
-  Wallet
+  Wallet,
+  AlertTriangle
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -277,6 +278,28 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
           </div>
         </div>
       </motion.div>
+
+      {/* Warning Banner for Imported Accounts */}
+      {account.type==='imported' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-yellow-500/10 border-l-4 border-yellow-500 px-4 py-3 mx-6 mt-4 rounded-r-md"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-medium text-sm text-yellow-500">
+                Imported Account Warning
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This is an imported account and cannot be restored using your wallet's recovery phrase. 
+                Please transfer funds to a regular account before sending to external wallets.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Main Content - Add overflow-y-auto here */}
       <div className="flex-1 overflow-y-auto">
