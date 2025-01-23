@@ -1,6 +1,5 @@
 interface SessionConfig {
   allowedOrigins: string[]
-  allowedExtensionIds: string[]
   disconnectGracePeriod?: number // minutes before locking after disconnect
 }
 
