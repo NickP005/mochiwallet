@@ -53,11 +53,27 @@ class SessionWorkerManager {
     const id = crypto.randomUUID()
     this.connections.set(id, port)
 
-    // Clear any pending lock timeouts since we have an active connection
-    if (this.lockTimeout) {
-      clearTimeout(this.lockTimeout)
-      this.lockTimeout = undefined
-      this.sessionData.disconnectedAt = undefined
+    // Check session validity regardless of timeout state
+    if (this.sessionData.jwk) {
+      const timeSinceDisconnect = this.sessionData.disconnectedAt 
+        ? Date.now() - this.sessionData.disconnectedAt
+        : 0
+
+      if (timeSinceDisconnect < this.disconnectGracePeriod) {
+        // Valid session, clear any existing timeout
+        if (this.lockTimeout) {
+          clearTimeout(this.lockTimeout)
+          this.lockTimeout = undefined
+        }
+        this.sessionData.disconnectedAt = undefined
+      } else {
+        // Session expired, clean up
+        this.handleEndSession()
+        port.postMessage({
+          type: 'sessionExpired',
+          data: { timestamp: Date.now() }
+        })
+      }
     }
 
     port.onMessage.addListener((message: SessionWorkerMessage) => 
@@ -125,7 +141,17 @@ class SessionWorkerManager {
     }
   }
 
+  private cleanup() {
+    if (this.lockTimeout) {
+      clearTimeout(this.lockTimeout)
+      this.lockTimeout = undefined
+    }
+  }
+
   private handleStartSession(payload: { jwk: string }): void {
+    // Clear any existing session first
+    this.handleEndSession()
+    
     this.sessionData = {
       jwk: payload.jwk,
       disconnectedAt: undefined
@@ -137,7 +163,7 @@ class SessionWorkerManager {
       return { active: false }
     }
 
-    // If disconnected, check if we're still within grace period
+    // Atomic check of session validity
     if (this.sessionData.disconnectedAt) {
       const timeSinceDisconnect = Date.now() - this.sessionData.disconnectedAt
       if (timeSinceDisconnect > this.disconnectGracePeriod) {
@@ -146,6 +172,7 @@ class SessionWorkerManager {
       }
     }
 
+    // Return session data only if we got here (session is valid)
     return {
       active: true,
       jwk: this.sessionData.jwk
@@ -153,16 +180,29 @@ class SessionWorkerManager {
   }
 
   private handleEndSession(): void {
-    if (this.lockTimeout) {
-      clearTimeout(this.lockTimeout)
-      this.lockTimeout = undefined
-    }
+    this.cleanup()
     this.sessionData = {}
+    
+    // Notify all connections
+    this.connections.forEach(port => {
+      port.postMessage({
+        type: 'sessionEnded',
+        data: { timestamp: Date.now() }
+      })
+    })
+  }
+
+  // Add destructor method
+  public destroy() {
+    this.cleanup()
+    this.connections.forEach(port => port.disconnect())
+    this.connections.clear()
+    chrome.runtime.onConnect.removeListener(this.handleConnection.bind(this))
   }
 }
 // Initialize the session worker
 const sessionWorker = new SessionWorkerManager({
-  disconnectGracePeriod: 0.5, // 15 minutes grace period after disconnect
+  disconnectGracePeriod: 15, // 15 minutes grace period after disconnect
   allowedOrigins: [
     'chrome-extension://your-extension-id',
     'moz-extension://your-firefox-id'
@@ -170,4 +210,26 @@ const sessionWorker = new SessionWorkerManager({
   allowedExtensionIds: [
     "hdbpfdmjfcnbndgcifjfjiggjbhimgno"
   ]
+})
+
+// Listen for extension shutdown/unload
+chrome.runtime.onSuspend.addListener(() => {
+  sessionWorker.destroy()
+})
+
+//  Handle extension updates
+chrome.runtime.onUpdateAvailable.addListener(() => {
+  sessionWorker.destroy()
+  chrome.runtime.reload()
+})
+
+// Handle unexpected errors
+self.addEventListener('unload', () => {
+  sessionWorker.destroy()
+})
+
+// Handle unexpected errors that might crash the service worker
+globalThis.addEventListener('error', (event) => {
+  sessionWorker.destroy();
+
 }) 
