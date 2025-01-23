@@ -281,8 +281,13 @@ export function ManageAccountsDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[440px] h-[100vh] flex flex-col p-0 gap-0 dialog-content">
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={onClose}
+    >
+      <DialogContent 
+        className="w-full max-w-full  h-[100vh] flex flex-col p-0 gap-0 dialog-content"
+      >
         {/* Dynamic Header */}
         <div className="flex items-center h-14 border-b p-4">
           <div className="flex items-center gap-3 flex-1">
