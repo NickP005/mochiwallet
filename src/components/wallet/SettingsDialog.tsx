@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {version} from '../../../package.json'
+import { sessionManager } from '@/lib/services/SessionManager'
 
 type Theme = 'dark' | 'light' | 'system'
 
@@ -42,6 +43,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     try {
       await wallet.lockWallet()
       await StorageProvider.getStorage().clear()
+      await sessionManager.endSession()
       window.location.reload()
     } catch (error) {
       console.error('Error logging out:', error)
