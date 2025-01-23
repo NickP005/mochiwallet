@@ -101,21 +101,13 @@ export function AddressInput({
             className="w-full p-0 mt-1 z-50" 
             align="start"
             side="bottom"
-            onWheel={(e) => {
-              e.stopPropagation();
-              const target = e.currentTarget;
-              target.scrollTop += e.deltaY;
-            }}
             style={{ 
               width: containerRef.current?.offsetWidth || 'auto',
               pointerEvents: 'auto', // Fix the issue with the popover not being clickable on some systems
               position: 'fixed'  // Try forcing fixed positioning
             }}
           >
-            <div
-              className="max-h-[300px] overflow-y-auto py-1"
-              onWheel={(e) => e.stopPropagation()}
-            >
+            <div className="max-h-[300px] overflow-y-auto py-1">
               {options.map((option) => (
                 <button
                   key={option.value}
