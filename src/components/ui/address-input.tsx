@@ -103,6 +103,7 @@ export function AddressInput({
             side="bottom"
             style={{ 
               width: containerRef.current?.offsetWidth || 'auto',
+              pointerEvents: 'auto', // Fix the issue with the popover not being clickable on some systems
               position: 'fixed'  // Try forcing fixed positioning
             }}
           >
