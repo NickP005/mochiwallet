@@ -92,15 +92,19 @@ export function AddressInput({
             <Button 
               variant="ghost"
               size="sm"
-              className="absolute left-0 h-full px-3 hover:bg-transparent"
+              className="absolute left-0 h-full px-3 hover:bg-transparent z-20"
             >
               <At className="h-4 w-4 text-primary" />
             </Button>
           </PopoverTrigger>
           <PopoverContent 
-            className="w-full p-0 mt-1" 
+            className="w-full p-0 mt-1 z-50" 
             align="start"
-            style={{ width: containerRef.current?.offsetWidth || 'auto' }}
+            side="bottom"
+            style={{ 
+              width: containerRef.current?.offsetWidth || 'auto',
+              position: 'fixed'  // Try forcing fixed positioning
+            }}
           >
             <div className="max-h-[300px] overflow-y-auto py-1">
               {options.map((option) => (
