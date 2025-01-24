@@ -27,7 +27,7 @@ export function AmountInput({
       <Input
         {...props}
         className={cn(
-          "pr-[68px]",
+          "pl-8 pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
           error && "border-destructive focus-visible:ring-destructive",
           className
         )}
