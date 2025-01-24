@@ -143,6 +143,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
   // Handle refresh
   const handleRefresh = async () => {
+    if(refreshing) return;
     setRefreshing(true)
     checkActivation().finally(() => {
       setRefreshing(false)
