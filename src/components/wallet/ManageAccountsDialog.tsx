@@ -15,12 +15,14 @@ import {
   Loader2,
   Smile,
   Trash2,
-  Tag as At,
+  Tag ,
+  AtSign as At,
   Hash,
   Key,
   Lock,
   Archive,
-  RotateCcw
+  RotateCcw,
+  Copy
 } from 'lucide-react'
 import { Account, useAccounts, useWallet } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
@@ -34,6 +36,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 interface ManageAccountsDialogProps {
   isOpen: boolean
   onClose: () => void
+  initialView?: 'list' | 'detail'
+  initialAccount?: Account
+  showBack?: boolean
 }
 
 type View = 'list' | 'detail'
@@ -43,6 +48,12 @@ interface DetailViewProps {
   onBack: () => void
   onUpdate: (tag: string, updates: Partial<Account>) => void
   onDelete: (tag: string) => void
+
+}
+
+function truncateMiddle(str: string, startChars = 8, endChars = 8) {
+  if (str.length <= startChars + endChars) return str
+  return `${str.slice(0, startChars)}...${str.slice(-endChars)}`
 }
 
 function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
@@ -180,27 +191,163 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         </div>
       </div>
 
-      {/* Account Info Section */}
-      <div className="space-y-4 bg-muted/50 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <At className="h-4 w-4 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm text-muted-foreground mb-1">Tag</div>
-            <code className="text-xs font-mono break-all">
-              {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))}
-            </code>
+      {/* Account Details Section */}
+      <div className="space-y-4">
+        {/* Tag Information */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Account Identifiers</h3>
+          
+          <div className="space-y-2">
+            {/* Base58 Tag */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>Account Tag</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger className="w-full">
+                      <code className="text-xs font-mono truncate block">
+                        {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))!}
+                      </code>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <code className="text-xs font-mono break-all">
+                        {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))!}
+                      </code>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))!)
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Hex Tag */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>Internal Hexadecimal Tag</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger className="w-full">
+                      <code className="text-xs font-mono truncate block">
+                        {account.tag}
+                      </code>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <code className="text-xs font-mono break-all">
+                        {account.tag}
+                      </code>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(account.tag)
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* First Address */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <At className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>First Generated WOTS+ Address</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger className="w-full">
+                      <code className="text-xs font-mono truncate block">
+                        {account.faddress}
+                      </code>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <code className="text-xs font-mono break-all">
+                        {truncateMiddle(account.faddress)}
+                      </code>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(account.faddress)
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <Hash className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Index</div>
-            <div className="text-sm">{account.index}</div>
+        {/* Technical Details */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Technical Details</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="p-2 bg-muted rounded">
+              <Tooltip>
+                <TooltipTrigger className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span>{account.type}</span>
+                </TooltipTrigger>
+                <TooltipContent>Account Type</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="p-2 bg-muted rounded">
+              <Tooltip>
+                <TooltipTrigger className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Source:</span>
+                  <span>{account.source || 'mnemonic'}</span>
+                </TooltipTrigger>
+                <TooltipContent>Account Source</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="p-2 bg-muted rounded">
+              <Tooltip>
+                <TooltipTrigger className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Index:</span>
+                  <span>{account.index || 0}</span>
+                </TooltipTrigger>
+                <TooltipContent>Derivation Index</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="p-2 bg-muted rounded">
+              <Tooltip>
+                <TooltipTrigger className="flex items-center gap-2">
+                  <span className="text-muted-foreground">WOTS Index:</span>
+                  <span>{account.wotsIndex}</span>
+                </TooltipTrigger>
+                <TooltipContent>Current WOTS Index</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </div>
@@ -366,22 +513,31 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
 
 export function ManageAccountsDialog({
   isOpen,
-  onClose
+  onClose,
+  initialView = 'list',
+  initialAccount,
+  showBack = true,
 }: ManageAccountsDialogProps) {
-  const [view, setView] = useState<'list' | 'detail'>('list')
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [view, setView] = useState<'list' | 'detail'>(initialView)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(initialAccount || null)
   const [tempAccounts, setTempAccounts] = useState<Account[]>([])
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const acc = useAccounts()
 
-  // Initialize tempAccounts when dialog opens
+  // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
+      setView(initialView)
+      setSelectedAccount(initialAccount || null)
       setTempAccounts(acc.accounts)
+    } else {
+      // Reset everything when dialog closes
+      setView('list')
+      setSelectedAccount(null)
       setHasChanges(false)
     }
-  }, [isOpen, acc.accounts])
+  }, [isOpen, acc.accounts, initialView, initialAccount])
 
   // Handle account updates
   const handleAccountUpdate = async (tag: string, updates: Partial<Account>) => {
@@ -459,7 +615,7 @@ export function ManageAccountsDialog({
         <div className="flex items-center h-14 border-b p-4">
           <div className="flex items-center gap-3 flex-1">
             <div className="w-8">
-              {view === 'detail' && (
+              {view === 'detail' && showBack && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -615,6 +771,7 @@ export function ManageAccountsDialog({
                     }}
                     onUpdate={handleAccountUpdate}
                     onDelete={handleAccountDelete}
+                    showBack={initialAccount === null}
                   />
                 )}
               </motion.div>

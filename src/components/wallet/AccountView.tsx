@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { SendModal } from './SendModal'
 import {TagUtils} from "mochimo-wots"
 import { ReceiveDialog } from './ReceiveDialog'
+import { ManageAccountsDialog } from './ManageAccountsDialog'
 
 interface AccountViewProps {
   account: Account
@@ -39,11 +40,7 @@ interface Transaction {
   address: string
 }
 
-const truncateMiddle = (text: string, startChars = 8, endChars = 8) => {
-  if (text.length <= startChars + endChars) return text
 
-  return `${text.slice(0, startChars)}...${text.slice(-endChars)}`
-}
 
 export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -55,6 +52,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [sendModalOpen, setSendModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [receiveModalOpen, setReceiveModalOpen] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
   const w = useWallet()
   const ac = useAccounts()
@@ -191,6 +189,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
                     whileHover={{ rotate: 15, scale: 1.1 }}
                     transition={{ type: "spring", stiffness: 400 }}
                     className="p-2 rounded-full bg-primary/10 shrink-0 cursor-pointer"
+                    onClick={() => setShowDetails(true)}
                   >
                     <Wallet className="h-5 w-5 text-primary" />
                   </motion.div>
@@ -456,6 +455,14 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         isOpen={receiveModalOpen}
         onClose={() => setReceiveModalOpen(false)}
         account={account}
+      />
+
+      <ManageAccountsDialog
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+        initialView="detail"
+        initialAccount={account}
+        showBack={false}
       />
     </div>
   )
