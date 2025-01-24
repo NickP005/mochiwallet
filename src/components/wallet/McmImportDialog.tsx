@@ -7,7 +7,6 @@ import { Upload, Lock, CheckCircle2, AlertCircle, AlertTriangle, Loader2, Tag, U
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { DecodeResult, MCMDecoder, NetworkProvider, WOTSEntry } from 'mochimo-wallet'
-import { MochimoService } from '@/lib/services/mochimo'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { useAccounts } from 'mochimo-wallet'
