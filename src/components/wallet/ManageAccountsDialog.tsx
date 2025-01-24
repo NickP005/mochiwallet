@@ -17,12 +17,14 @@ import {
   Trash2,
   Tag as At,
   Hash,
-  Key
+  Key,
+  Lock
 } from 'lucide-react'
-import { Account, useAccounts } from 'mochimo-wallet'
+import { Account, useAccounts, useWallet } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
 import { TagUtils } from "mochimo-wots"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog"
 
 
 interface ManageAccountsDialogProps {
@@ -46,7 +48,12 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const [newName, setNewName] = useState(account.name || '')
   const [isSaving, setIsSaving] = useState(false)
   const { theme } = useTheme()
-
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const w = useWallet()
+  const [showSecretConfirm, setShowSecretConfirm] = useState(false)
+  const [secretPassword, setSecretPassword] = useState('')
+  const [secretError, setSecretError] = useState<string | null>(null)
   // Convert theme to EmojiPicker theme type
   const emojiPickerTheme: Theme = theme === 'dark' ? Theme.DARK : Theme.LIGHT
 
@@ -66,6 +73,41 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const handleEmojiSelect = (emoji: any) => {
     onUpdate(account.tag, { avatar: emoji.emoji })
     setShowEmojiPicker(false)
+  }
+
+  const handleAccountDelete = async () => {
+    try {
+      // Verify password before deletion
+      const isVerified = await w.verifyWalletOwnership(deletePassword)
+      if (!isVerified) {
+        setDeleteError('Invalid password')
+        return
+      }
+      
+      onDelete(account.tag)
+      setShowDeleteConfirm(false)
+      setDeletePassword('')
+      setDeleteError(null)
+    } catch (error) {
+      setDeleteError('Invalid password')
+    }
+  }
+
+  const handleVerifyForSecret = async () => {
+    try {
+      const isVerified = await w.verifyWalletOwnership(secretPassword)
+      if (!isVerified) {
+        setSecretError('Invalid password')
+        return
+      }
+      
+      setShowSecret(true)
+      setShowSecretConfirm(false)
+      setSecretPassword('')
+      setSecretError(null)
+    } catch (error) {
+      setSecretError('Invalid password')
+    }
   }
 
   return (
@@ -164,7 +206,13 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         <Button
           variant="outline"
           className="w-full justify-between"
-          onClick={() => setShowSecret(!showSecret)}
+          onClick={() => {
+            if (showSecret) {
+              setShowSecret(false)
+            } else {
+              setShowSecretConfirm(true)
+            }
+          }}
         >
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4 text-primary" />
@@ -183,6 +231,64 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         )}
       </div>
 
+      {/* Add Password Verification Dialog */}
+      {showSecretConfirm && (
+        <AlertDialog open={showSecretConfirm} onOpenChange={setShowSecretConfirm}>
+          <AlertDialogContent>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (secretPassword) {
+                handleVerifyForSecret()
+              }
+            }}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>View Secret Phrase</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Please enter your password to view the secret phrase.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={secretPassword}
+                    onChange={(e) => {
+                      setSecretPassword(e.target.value)
+                      setSecretError(null)
+                    }}
+                    placeholder="Enter your password"
+                  />
+                  {secretError && (
+                    <p className="text-sm text-destructive">{secretError}</p>
+                  )}
+                </div>
+              </div>
+
+              <AlertDialogFooter>
+                <AlertDialogCancel type="button" onClick={() => {
+                  setShowSecretConfirm(false)
+                  setSecretPassword('')
+                  setSecretError(null)
+                }}>
+                  Cancel
+                </AlertDialogCancel>
+                <Button 
+                  type="submit"
+                  disabled={!secretPassword}
+                >
+                  View Secret
+                </Button>
+              </AlertDialogFooter>
+            </form>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       {/* Delete Account Button */}
       <Button
         variant="destructive"
@@ -192,6 +298,64 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         <Trash2 className="h-4 w-4 mr-2" />
         Remove Account
       </Button>
+
+      {showDeleteConfirm && (
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (deletePassword) {
+                handleAccountDelete()
+              }
+            }}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. Please enter your password to confirm deletion.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => {
+                      setDeletePassword(e.target.value)
+                      setDeleteError(null)
+                    }}
+                    placeholder="Enter your password"
+                  />
+                  {deleteError && (
+                    <p className="text-sm text-destructive">{deleteError}</p>
+                  )}
+                </div>
+              </div>
+
+              <AlertDialogFooter>
+                <AlertDialogCancel type="button" onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setDeletePassword('')
+                  setDeleteError(null)
+                }}>
+                  Cancel
+                </AlertDialogCancel>
+                <Button 
+                  type="submit"
+                  variant="destructive"
+                  disabled={!deletePassword}
+                >
+                  Delete Account
+                </Button>
+              </AlertDialogFooter>
+            </form>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }
