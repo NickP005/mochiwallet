@@ -18,13 +18,17 @@ import {
   Tag as At,
   Hash,
   Key,
-  Lock
+  Lock,
+  Archive,
+  RotateCcw
 } from 'lucide-react'
 import { Account, useAccounts, useWallet } from 'mochimo-wallet'
 import { useEffect, useState } from 'react'
 import { AccountAvatar } from '../ui/account-avatar'
 import { TagUtils } from "mochimo-wots"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 
 interface ManageAccountsDialogProps {
@@ -83,7 +87,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         setDeleteError('Invalid password')
         return
       }
-      
+
       onDelete(account.tag)
       setShowDeleteConfirm(false)
       setDeletePassword('')
@@ -100,7 +104,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         setSecretError('Invalid password')
         return
       }
-      
+
       setShowSecret(true)
       setShowSecretConfirm(false)
       setSecretPassword('')
@@ -115,7 +119,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
       {/* Avatar and Name Section */}
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
-          <div 
+          <div
             className="cursor-pointer"
             onClick={() => setShowEmojiPicker(true)}
           >
@@ -134,15 +138,15 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
               <Smile className="h-3 w-3" />
             </Button>
           </div>
-          
+
           {/* Emoji Picker */}
           {showEmojiPicker && (
             <>
-              <div 
+              <div
                 className="fixed inset-0 z-50"
                 onClick={() => setShowEmojiPicker(false)}
               />
-              <div 
+              <div
                 className="absolute z-50 left-1/2 -translate-x-1/2"
                 style={{ top: 'calc(100% + 8px)' }}
               >
@@ -166,8 +170,8 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
             placeholder="Account Name"
             className="flex-1"
           />
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleNameUpdate}
             disabled={newName === account.name}
           >
@@ -247,7 +251,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                   Please enter your password to view the secret phrase.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
@@ -277,7 +281,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                 }}>
                   Cancel
                 </AlertDialogCancel>
-                <Button 
+                <Button
                   type="submit"
                   disabled={!secretPassword}
                 >
@@ -314,7 +318,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                   This action cannot be undone. Please enter your password to confirm deletion.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
@@ -344,7 +348,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
                 }}>
                   Cancel
                 </AlertDialogCancel>
-                <Button 
+                <Button
                   type="submit"
                   variant="destructive"
                   disabled={!deletePassword}
@@ -364,21 +368,20 @@ export function ManageAccountsDialog({
   isOpen,
   onClose
 }: ManageAccountsDialogProps) {
-  const [view, setView] = useState<View>('list')
+  const [view, setView] = useState<'list' | 'detail'>('list')
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [tempAccounts, setTempAccounts] = useState<Account[]>([])
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const acc = useAccounts()
-  const [tempAccounts, setTempAccounts] = useState(acc.accounts)
-  // Reset temp accounts when dialog opens
+
+  // Initialize tempAccounts when dialog opens
   useEffect(() => {
     if (isOpen) {
       setTempAccounts(acc.accounts)
       setHasChanges(false)
-    } else {
-      setTempAccounts([])
     }
-  }, [isOpen, acc.accounts.length])
+  }, [isOpen, acc.accounts])
 
   // Handle account updates
   const handleAccountUpdate = async (tag: string, updates: Partial<Account>) => {
@@ -445,11 +448,11 @@ export function ManageAccountsDialog({
   }
 
   return (
-    <Dialog 
-      open={isOpen} 
+    <Dialog
+      open={isOpen}
       onOpenChange={onClose}
     >
-      <DialogContent 
+      <DialogContent
         className="w-full max-w-full  h-[100vh] flex flex-col p-0 gap-0 dialog-content"
       >
         {/* Dynamic Header */}
@@ -486,45 +489,115 @@ export function ManageAccountsDialog({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="space-y-4"
               >
-                {/* Reorderable list */}
-                <Reorder.Group
-                  axis="y"
-                  values={tempAccounts}
-                  onReorder={handleReorder}
-                  className="space-y-2"
-                >
-                  {tempAccounts.map((account) => (
-                    <Reorder.Item
-                      key={account.tag}
-                      value={account}
-                      className="bg-background rounded-lg border touch-none"
+                <Tabs defaultValue="active" className="w-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="active" className="flex-1">
+                      Active
+                    </TabsTrigger>
+                    <TabsTrigger value="deleted" className="flex-1">
+                      <Archive className="h-4 w-4 mr-2" />
+                      Deleted
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="active" className="mt-4">
+                    <Reorder.Group
+                      axis="y"
+                      values={tempAccounts}
+                      onReorder={handleReorder}
+                      className="space-y-2"
                     >
-                      <div className="flex items-center p-3 gap-3">
-                        <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
-                        <div
-                          className="flex-1 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded p-2"
-                          onClick={() => {
-                            setSelectedAccount(account)
-                            setView('detail')
-                          }}
+                      {tempAccounts.map((account) => (
+                        <Reorder.Item
+                          key={account.tag}
+                          value={account}
+                          className="bg-background rounded-lg border touch-none"
                         >
-                          <div className="flex items-center gap-3">
-                            <AccountAvatar name={account.name || ''} emoji={account.avatar} tag={account.tag} />
-                            <div>
-                              <p className="font-medium">{account.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatBalance(account.balance || '0')}
-                              </p>
+                          <div className="flex items-center p-3 gap-3">
+                            <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                            <div
+                              className="flex-1 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded p-2"
+                              onClick={() => {
+                                setSelectedAccount(account)
+                                setView('detail')
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <AccountAvatar name={account.name || ''} emoji={account.avatar} tag={account.tag} />
+                                <div>
+                                  <p className="font-medium">{account.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatBalance(account.balance || '0')}
+                                  </p>
+                                </div>
+                              </div>
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  </TabsContent>
+
+                  <TabsContent value="deleted" className="mt-4">
+                    <div className="space-y-2">
+                      {acc.deletedAccounts.map((account) => (
+                        <div
+                          key={account.tag}
+                          className="bg-card/50 rounded-lg border shadow-sm"
+                        >
+                          <div className="p-3 flex items-center gap-3">
+                            <AccountAvatar
+                              name={account.name}
+                              tag={account.tag}
+                              emoji={account.avatar}
+                              className="h-8 w-8 opacity-75"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-muted-foreground">{account.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))}
+                              </div>
+                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="shrink-0"
+                                  onClick={async () => {
+                                    try {
+                                      // Update account to restore it
+                                      await acc.updateAccount(account.tag, {
+                                        isDeleted: false,
+                                        order: acc.accounts.length // Put at the end of the list
+                                      })
+
+                                    } catch (error) {
+                                      console.error('Error restoring account:', error)
+                                    }
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                  <span className="sr-only">Restore account</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Restore account</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                         </div>
-                      </div>
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
+                      ))}
+                      {acc.deletedAccounts.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No deleted accounts
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </motion.div>
             ) : (
               <motion.div
