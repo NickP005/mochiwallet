@@ -57,7 +57,7 @@ export function WalletDashboard({
 
 
   const accounts = acc.accounts
-
+  const hasSelectedAccount = acc.selectedAccount !== null && acc.accounts.find(a=>a.tag === acc.selectedAccount)
   return (
     <div className="h-full flex">
       <Sidebar
@@ -89,7 +89,7 @@ export function WalletDashboard({
       />
 
       <main className="flex-1 h-full w-full">
-        {acc.selectedAccount ? (
+        {hasSelectedAccount ? (
           <AccountView 
             account={accounts.find(a=>a.tag === acc.selectedAccount)!}
             onUpdate={(updated) => {

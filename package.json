@@ -44,7 +44,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.468.0",
     "mochimo-mesh-api-client": "^1.1.0",
-    "mochimo-wallet": "^1.1.33",
+    "mochimo-wallet": "^1.1.34",
     "mochimo-wots": "^1.2.7",
     "process": "^0.11.10",
     "qrcode.react": "^4.2.0",
