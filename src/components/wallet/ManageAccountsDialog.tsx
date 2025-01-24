@@ -771,7 +771,6 @@ export function ManageAccountsDialog({
                     }}
                     onUpdate={handleAccountUpdate}
                     onDelete={handleAccountDelete}
-                    showBack={initialAccount === null}
                   />
                 )}
               </motion.div>
