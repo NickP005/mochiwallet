@@ -1,5 +1,5 @@
-import log from "loglevel"
-const logger = log.getLogger("SessionWorker");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("session");
 
 interface SessionConfig {
   allowedOrigins: string[]

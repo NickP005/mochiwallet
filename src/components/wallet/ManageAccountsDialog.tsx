@@ -31,8 +31,8 @@ import { TagUtils } from "mochimo-wots"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import log from "loglevel"
-const logger = log.getLogger("ManageAccountsDialog");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-modal");
 
 interface ManageAccountsDialogProps {
   isOpen: boolean

@@ -14,8 +14,8 @@ import { Logo } from "./components/ui/logo"
 import { env } from "./config/env"
 import { sessionManager } from "./lib/services/SessionManager"
 import Loading from "./components/wallet/Loading"
-import log from "loglevel"
-const logger = log.getLogger("App");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet");
 // const apiUrl = 'http://46.250.241.212:8081'
 // const apiUrl2 = 'http://35.208.202.76:8080'
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import' | 'loading'

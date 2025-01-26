@@ -1,6 +1,6 @@
-import log from "loglevel"
-const logger = log.getLogger("SessionManager");
-  
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("session")
+
 type MessageResponse<T = any> = {
   success: boolean
   data?: T
@@ -13,7 +13,7 @@ export class SessionManager {
 
   constructor() {
     this.port = chrome.runtime.connect({ name: 'session-manager' })
-    
+
     this.port.onMessage.addListener((message: MessageResponse & { messageId?: string }) => {
       if (message.messageId) {
         const handler = this.messageHandlers.get(message.messageId)
@@ -28,9 +28,9 @@ export class SessionManager {
   private async sendMessage(type: string, payload?: any): Promise<MessageResponse> {
     return new Promise((resolve) => {
       const messageId = crypto.randomUUID()
-      
+
       this.messageHandlers.set(messageId, resolve)
-      
+
       this.port.postMessage({
         type,
         payload,

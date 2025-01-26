@@ -5,8 +5,8 @@ import { useState } from 'react'
 import { Account } from 'mochimo-wallet'
 import { TagUtils } from 'mochimo-wots'
 import { QRCodeCanvas} from 'qrcode.react'
-import log from "loglevel"
-const logger = log.getLogger("ReceiveDialog");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-receive");
 
 interface ReceiveDialogProps {
   isOpen: boolean

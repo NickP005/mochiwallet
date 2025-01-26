@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import log from "loglevel"
-const logger = log.getLogger("ErrorBoundary");  
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("default");  
 
 interface Props {
   children: ReactNode

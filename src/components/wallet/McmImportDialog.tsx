@@ -11,8 +11,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Badge } from '@/components/ui/badge'
 import { useAccounts } from 'mochimo-wallet'
 import { WotsAddress } from 'mochimo-wots'
-import log from "loglevel"
-const logger = log.getLogger("McmImportDialog");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-modal");
 
 interface AccountValidation {
   isValid: boolean

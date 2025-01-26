@@ -24,8 +24,8 @@ interface SendModalProps {
   isOpen: boolean
   onClose: () => void
 }
-import log from "loglevel"
-const logger = log.getLogger("SendModal");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-send");
 
 type Step = 'details' | 'confirm' | 'success'
 

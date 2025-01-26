@@ -5,8 +5,8 @@ import { Logo } from '@/components/ui/logo'
 import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import log from "loglevel"
-const logger = log.getLogger("UnlockWallet");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-unlock");
 import { useWallet } from 'mochimo-wallet'
 
 interface UnlockWalletProps {

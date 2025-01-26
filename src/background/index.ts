@@ -1,7 +1,7 @@
 // Listen for installation
 
-import log from "loglevel"
-const logger = log.getLogger("Background");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("background");
 
 import "./session/session-worker"
 // Check if we're in a Chrome extension context

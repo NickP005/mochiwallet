@@ -5,8 +5,8 @@ import { HDWallet, useWallet, useAccounts } from 'mochimo-wallet'
 import { AddAccountDialog } from './AddAccountDialog'
 import { ManageAccountsDialog } from './ManageAccountsDialog'
 import { SettingsDialog } from './SettingsDialog'
-import log from "loglevel"
-const logger = log.getLogger("WalletDashboard");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet");
 interface WalletDashboardProps {
   wallet: HDWallet
   sidebarOpen: boolean

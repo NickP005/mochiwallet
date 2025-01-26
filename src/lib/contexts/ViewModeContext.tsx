@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import log from "loglevel"
-const logger = log.getLogger("ViewModeContext");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet");
 
 type ViewMode = 'popup' | 'panel'
 

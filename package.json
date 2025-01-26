@@ -6,8 +6,8 @@
   "scripts": {
     "icons": "tsx scripts/create-icons.ts",
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "watch": "tsc -b --watch & vite build --watch",
+    "build": "tsc -b && vite build --mode production",
+    "watch": "tsc -b --watch & vite build --watch --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "tsx server/index.ts",

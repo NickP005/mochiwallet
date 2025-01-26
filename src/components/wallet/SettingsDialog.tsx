@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import {version} from '../../../package.json'
 import { sessionManager } from '@/lib/services/SessionManager'
-import log from "loglevel"
-const logger = log.getLogger("SettingsDialog");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-settings");
 
 type Theme = 'dark' | 'light' | 'system'
 

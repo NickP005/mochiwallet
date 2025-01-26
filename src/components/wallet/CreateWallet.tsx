@@ -5,8 +5,8 @@ import { Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../ui/logo'
 import { MasterSeed, useAccounts, useWallet } from 'mochimo-wallet'
 import { MnemonicBackup } from './MnemonicBackup'
-import log from "loglevel"
-const logger = log.getLogger("CreateWallet");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet");
 
 interface CreateWalletProps {
   onWalletCreated: (wallet: any, jwk: JsonWebKey) => void

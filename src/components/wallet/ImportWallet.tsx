@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Eye, EyeOff, Lock, Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { MasterSeed, useWallet, useAccounts } from 'mochimo-wallet'
-import log from "loglevel"
-const logger = log.getLogger("ImportWallet");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet-modal");
 
 interface ImportWalletProps {
   onWalletImported: (wallet: any) => void

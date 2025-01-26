@@ -26,8 +26,8 @@ import { SendModal } from './SendModal'
 import {TagUtils} from "mochimo-wots"
 import { ReceiveDialog } from './ReceiveDialog'
 import { ManageAccountsDialog } from './ManageAccountsDialog'
-import log from "loglevel"
-const logger = log.getLogger("AccountView");
+import { log } from "@/lib/utils/logging"
+const logger = log.getLogger("wallet");
 
 interface AccountViewProps {
   account: Account
