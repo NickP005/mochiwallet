@@ -178,7 +178,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-10  border-b border-border/50"
       >
-        <div className="max-w-2xl mx-auto px-6 py-4">
+        <div className="max-w-full mx-auto px-6 py-4">
           {/* Main header content */}
           <div className="flex items-center justify-between">
             {/* Left side - Account name and icon */}
@@ -303,7 +303,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
 
       {/* Main Content - Add overflow-y-auto here */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-4 space-y-6">
+        <div className="max-w-full mx-auto px-6 py-4 space-y-6">
           {/* Balance Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
