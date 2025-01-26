@@ -26,6 +26,8 @@ import { SendModal } from './SendModal'
 import {TagUtils} from "mochimo-wots"
 import { ReceiveDialog } from './ReceiveDialog'
 import { ManageAccountsDialog } from './ManageAccountsDialog'
+import log from "loglevel"
+const logger = log.getLogger("AccountView");
 
 interface AccountViewProps {
   account: Account
@@ -92,7 +94,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   // Check activation status and balance
   const checkActivation = async () => {
     try {
-      console.log('checking activation')
+      logger.info('checking activation')
       setCheckingActivation(true)
       const response = await NetworkProvider.getNetwork().resolveTag(account.tag)
       // Account is activated if addressConsensus is not empty
@@ -104,26 +106,26 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       let t1 = performance.now()
       const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.wotsWallet.getAddress()!
       let t2 = performance.now()
-      console.log('time taken to get wots address', t2 - t1)
-      console.log('current wots address being used', Buffer.from(currentWotsAddressBeingUsed).toString('hex'))
+      logger.info('time taken to get wots address', t2 - t1)
+      logger.info('current wots address being used', Buffer.from(currentWotsAddressBeingUsed).toString('hex'))
 
       if (currentAddress && currentAddress !== Buffer.from(currentWotsAddressBeingUsed).toString('hex')) {
-        console.error('current address does not match with the wots address being used')
-        console.log('CURRENT NETWORK ADDRESS', currentAddress)
-        console.log('CURRENTLY USED WOTS INDEX', account.wotsIndex)
+        logger.error('current address does not match with the wots address being used')
+        logger.info('CURRENT NETWORK ADDRESS', currentAddress)
+        logger.info('CURRENTLY USED WOTS INDEX', account.wotsIndex)
         const t1 = performance.now()
         const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex').subarray(20, 40), Buffer.from(account.faddress, 'hex'))
         const t2 = performance.now()
-        console.log('current wots index', currentWotsIndex)
-        console.log('time taken', t2 - t1)
+        logger.info('current wots index', currentWotsIndex)
+        logger.info('time taken', t2 - t1)
         if (currentWotsIndex !== undefined && currentWotsIndex !== null) ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
-        console.log('updated wots index', currentWotsIndex)
+        logger.info('updated wots index', currentWotsIndex)
       } else {
-        console.log('current address matches with the wots address being used')
+        logger.info('current address matches with the wots address being used')
       }
 
       if (isActivated) {
-        console.log('Account activation details:', {
+        logger.info('Account activation details:', {
           address: response.addressConsensus,
           balance: response.balanceConsensus,
           nodes: response.quorum.map(q => q.node.host)
@@ -132,7 +134,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       setIsActivated(isActivated)
       onUpdate(account)
     } catch (error) {
-      console.error('Error checking activation:', error)
+      logger.error('Error checking activation:', error)
       setIsActivated(false)
     } finally {
       setCheckingActivation(false)
@@ -148,7 +150,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
     })
   }
   const network = useNetwork()
-  console.log("BLOCK HEIGHT", network.blockHeight)
+  logger.info("BLOCK HEIGHT", network.blockHeight)
 
   useEffect(() => {
     //when block height changes, check if the account needs to update its wots index.

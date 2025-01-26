@@ -1,3 +1,6 @@
+import log from "loglevel"
+const logger = log.getLogger("SessionWorker");
+
 interface SessionConfig {
   allowedOrigins: string[]
   disconnectGracePeriod?: number // minutes before locking after disconnect
@@ -41,7 +44,7 @@ class SessionWorkerManager {
     if (port.name !== 'session-manager') return
 
     if (!this.verifyOrigin(port)) {
-      console.warn('Unauthorized connection attempt:', port.sender?.origin || port.sender?.id)
+      logger.warn('Unauthorized connection attempt:', port.sender?.origin || port.sender?.id)
       port.disconnect()
       return
     }

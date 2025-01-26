@@ -14,7 +14,8 @@ import { Logo } from "./components/ui/logo"
 import { env } from "./config/env"
 import { sessionManager } from "./lib/services/SessionManager"
 import Loading from "./components/wallet/Loading"
-
+import log from "loglevel"
+const logger = log.getLogger("App");
 // const apiUrl = 'http://46.250.241.212:8081'
 // const apiUrl2 = 'http://35.208.202.76:8080'
 type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import' | 'loading'
@@ -46,7 +47,6 @@ export function App() {
 
         if (session.active && session.jwk) {
           // Use the encrypted password to unlock the wallet
-          console.log(session.jwk)
           await w.unlockWallet(session.jwk, 'jwk')
           setView('dashboard')
         } else if (hasWallet) {
@@ -55,7 +55,7 @@ export function App() {
           setView('welcome')
         }
       } catch (error) {
-        console.error('Session check failed:', error)
+        logger.error('Session check failed:', error)
         setView('welcome')
       }
 
@@ -74,7 +74,7 @@ export function App() {
       //start session with the wallet password
       sessionManager.startSession(JSON.stringify(jwk), 100)
     } catch (error) {
-      console.error('App: Error handling wallet creation:', error)
+      logger.error('App: Error handling wallet creation:', error)
     }
   }
 
@@ -91,7 +91,7 @@ export function App() {
       setWallet(wallet)
       setView('dashboard')
     } catch (error) {
-      console.error('Error handling wallet import:', error)
+      logger.error('Error handling wallet import:', error)
     }
   }
 

@@ -5,7 +5,8 @@ import { HDWallet, useWallet, useAccounts } from 'mochimo-wallet'
 import { AddAccountDialog } from './AddAccountDialog'
 import { ManageAccountsDialog } from './ManageAccountsDialog'
 import { SettingsDialog } from './SettingsDialog'
-
+import log from "loglevel"
+const logger = log.getLogger("WalletDashboard");
 interface WalletDashboardProps {
   wallet: HDWallet
   sidebarOpen: boolean
@@ -33,7 +34,7 @@ export function WalletDashboard({
       //select the new account
       acc.setSelectedAccount(account.tag)
     } catch (error) {
-      console.error('Error creating account:', error)
+      logger.error('Error creating account:', error)
       throw error // Let the dialog handle the error
     } finally {
       setLoading(false)
@@ -45,10 +46,10 @@ export function WalletDashboard({
     try {
       setLoading(true)
       // TODO: Implement MCM file import
-      console.log('Importing account from file:', file.name)
+      logger.info('Importing account from file:', file.name)
       throw new Error('MCM import not implemented yet')
     } catch (error) {
-      console.error('Error importing account:', error)
+      logger.error('Error importing account:', error)
       throw error
     } finally {
       setLoading(false)
@@ -93,7 +94,7 @@ export function WalletDashboard({
           <AccountView 
             account={accounts.find(a=>a.tag === acc.selectedAccount)!}
             onUpdate={(updated) => {
-             console.log('updated account view :: ', updated)
+             logger.info('updated account view :: ', updated)
             }}
           />
         ) : (

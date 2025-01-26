@@ -11,6 +11,9 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Badge } from '@/components/ui/badge'
 import { useAccounts } from 'mochimo-wallet'
 import { WotsAddress } from 'mochimo-wots'
+import log from "loglevel"
+const logger = log.getLogger("McmImportDialog");
+
 interface AccountValidation {
   isValid: boolean
   networkAddress?: string
@@ -96,7 +99,7 @@ export function McmImportDialog({
             // Extract first 20 bytes (tag) and last 20 bytes (addr hash) from consensus address
             const consensusTag = response.addressConsensus.slice(2, 42) // First 20 bytes (40 hex chars)
             const consensusAddrHash = response.addressConsensus.slice(42, 82) // Last 20 bytes (40 hex chars)
-            // console.log("parts", { v2tag: account.tag, wots: account.address, consensusTag, consensusAddrHash, v3Tag, v3AddrHash })
+            logger.info("parts", { v2tag: account.tag, wots: account.address, consensusTag, consensusAddrHash, v3Tag, v3AddrHash })
             // Extract same parts from v3 address
 
             // Check if either part doesn't match
@@ -124,7 +127,7 @@ export function McmImportDialog({
               }
             }
           } catch (error) {
-            console.error("error", error, account.tag)
+            logger.error("error", error, account.tag)
             return {
               ...account,
               validation: {
@@ -146,7 +149,7 @@ export function McmImportDialog({
 
       setAccounts(sortedResults)
     } catch (error) {
-      console.error('Error during validation:', error)
+      logger.error('Error during validation:', error)
       setError('Failed to validate accounts')
     } finally {
       setValidating(false)
@@ -195,7 +198,7 @@ export function McmImportDialog({
       setAccounts(accountsWithTags)
       setView('select')
     } catch (error) {
-      console.error('Error decoding MCM file:', error)
+      logger.error('Error decoding MCM file:', error)
       setError('Invalid password or corrupted MCM file')
     } finally {
       setLoading(false)

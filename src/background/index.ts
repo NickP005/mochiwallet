@@ -1,5 +1,7 @@
 // Listen for installation
 
+import log from "loglevel"
+const logger = log.getLogger("Background");
 
 import "./session/session-worker"
 // Check if we're in a Chrome extension context
@@ -15,7 +17,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           sendResponse({ success: true });
         })
         .catch((error) => {
-          console.error('Failed to open side panel:', error);
+          logger.error('Failed to open side panel:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true; // Keep the message channel open
@@ -45,7 +47,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         // Initialize wallet logic here
       }
     } catch (error) {
-      console.error('Error initializing wallet:', error);
+      logger.error('Error initializing wallet:', error);
     }
   }
 

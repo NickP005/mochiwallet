@@ -24,6 +24,8 @@ interface SendModalProps {
   isOpen: boolean
   onClose: () => void
 }
+import log from "loglevel"
+const logger = log.getLogger("SendModal");
 
 type Step = 'details' | 'confirm' | 'success'
 
@@ -259,7 +261,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
         throw new Error(result || 'Transaction failed')
       }
     } catch (error) {
-      console.error('Send error:', error)
+      logger.error('Send error:', error)
       setError(error instanceof Error ? error.message : 'Failed to send')
     } finally {
       setSending(false)

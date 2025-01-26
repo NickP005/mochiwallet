@@ -5,6 +5,8 @@ import { Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../ui/logo'
 import { MasterSeed, useAccounts, useWallet } from 'mochimo-wallet'
 import { MnemonicBackup } from './MnemonicBackup'
+import log from "loglevel"
+const logger = log.getLogger("CreateWallet");
 
 interface CreateWalletProps {
   onWalletCreated: (wallet: any, jwk: JsonWebKey) => void
@@ -43,7 +45,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       setMnemonic(await ms.toPhrase())
       setStep('backup')
     } catch (error) {
-      console.error('Error creating wallet:', error)
+      logger.error('Error creating wallet:', error)
       setError('Failed to create wallet')
     } finally {
       setLoading(false)
@@ -64,7 +66,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       ac.setSelectedAccount(a.tag)
       onWalletCreated(wallet, jwk)
     } catch (error) {
-      console.error('Error saving wallet:', error)
+      logger.error('Error saving wallet:', error)
       setError('Failed to save wallet')
       setLoading(false)
     }
@@ -78,7 +80,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
       setMasterSeed(ms)
       setMnemonic(await ms.toPhrase())
     } catch (error) {
-      console.error('Error regenerating mnemonic:', error)
+      logger.error('Error regenerating mnemonic:', error)
       setError('Failed to generate new recovery phrase')
     } finally {
       setLoading(false)

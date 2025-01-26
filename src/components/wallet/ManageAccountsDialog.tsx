@@ -31,7 +31,8 @@ import { TagUtils } from "mochimo-wots"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-
+import log from "loglevel"
+const logger = log.getLogger("ManageAccountsDialog");
 
 interface ManageAccountsDialogProps {
   isOpen: boolean
@@ -78,7 +79,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
         setIsSaving(true)
         await onUpdate(account.tag, { name: newName.trim() })
       } catch (error) {
-        console.error('Error updating account name:', error)
+        logger.error('Error updating account name:', error)
       } finally {
         setIsSaving(false)
       }
@@ -554,7 +555,7 @@ export function ManageAccountsDialog({
         setSelectedAccount({ ...selectedAccount, ...updates })
       }
     } catch (error) {
-      console.error('Error updating account:', error)
+      logger.error('Error updating account:', error)
     }
   }
 
@@ -591,7 +592,7 @@ export function ManageAccountsDialog({
       setHasChanges(false)
       onClose()
     } catch (error) {
-      console.error('Error saving account order:', error)
+      logger.error('Error saving account order:', error)
     } finally {
       setIsSaving(false)
     }
@@ -731,7 +732,7 @@ export function ManageAccountsDialog({
                                       })
 
                                     } catch (error) {
-                                      console.error('Error restoring account:', error)
+                                      logger.error('Error restoring account:', error)
                                     }
                                   }}
                                 >

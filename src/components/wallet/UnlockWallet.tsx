@@ -5,7 +5,8 @@ import { Logo } from '@/components/ui/logo'
 import { motion } from 'framer-motion'
 import { Lock, Unlock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
+import log from "loglevel"
+const logger = log.getLogger("UnlockWallet");
 import { useWallet } from 'mochimo-wallet'
 
 interface UnlockWalletProps {
@@ -28,7 +29,7 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
       }
       onUnlock(w, jwk)
     } catch (error) {
-      console.error('Error unlocking wallet:', error)
+      logger.error('Error unlocking wallet:', error)
       setError(error instanceof Error ? error.message : 'Invalid password')
     } finally {
       setLoading(false)

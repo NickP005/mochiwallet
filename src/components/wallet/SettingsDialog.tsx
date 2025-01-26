@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import {version} from '../../../package.json'
 import { sessionManager } from '@/lib/services/SessionManager'
+import log from "loglevel"
+const logger = log.getLogger("SettingsDialog");
 
 type Theme = 'dark' | 'light' | 'system'
 
@@ -46,7 +48,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       await sessionManager.endSession()
       window.location.reload()
     } catch (error) {
-      console.error('Error logging out:', error)
+      logger.error('Error logging out:', error)
     }
   }
 

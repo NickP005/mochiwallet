@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Eye, EyeOff, Lock, Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { MasterSeed, useWallet, useAccounts } from 'mochimo-wallet'
+import log from "loglevel"
+const logger = log.getLogger("ImportWallet");
 
 interface ImportWalletProps {
   onWalletImported: (wallet: any) => void
@@ -58,7 +60,7 @@ export function ImportWallet({ onWalletImported, onBack }: ImportWalletProps) {
 
       onWalletImported(wallet)
     } catch (error) {
-      console.error('Error importing wallet:', error)
+      logger.error('Error importing wallet:', error)
       setError('Invalid recovery phrase')
       setLoading(false)
     }

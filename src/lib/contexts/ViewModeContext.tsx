@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import log from "loglevel"
+const logger = log.getLogger("ViewModeContext");
 
 type ViewMode = 'popup' | 'panel'
 
@@ -32,18 +34,18 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
 
     const openPanelMode = async () => {
         try {
-            console.log('current view mode', viewMode)
+            logger.info('current view mode', viewMode)
             if (viewMode === 'popup') {
                 const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-                console.log('Active tabs:', tabs)
+                logger.info('Active tabs:', tabs)
                 if (tabs[0]?.id) {
-                    console.log('Attempting to open side panel for tab:', tabs[0].id)
+                    logger.info('Attempting to open side panel for tab:', tabs[0].id)
                     // Close popup immediately after sending message
                     chrome.runtime.sendMessage({
                         type: 'OPEN_SIDE_PANEL',
                         tabId: tabs[0].id
                     }).then(res => {
-                        console.log('response', res)
+                        logger.info('response', res)
                         window.close()
                     })
                 }
@@ -51,7 +53,7 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
                 window.close();
             }
         } catch (error) {
-            console.error('Failed to toggle view mode:', error)
+            logger.error('Failed to toggle view mode:', error)
             return false
         }
     }

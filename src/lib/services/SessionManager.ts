@@ -1,3 +1,6 @@
+import log from "loglevel"
+const logger = log.getLogger("SessionManager");
+  
 type MessageResponse<T = any> = {
   success: boolean
   data?: T
@@ -37,7 +40,7 @@ export class SessionManager {
   }
 
   async startSession(jwk: string, duration?: number): Promise<void> {
-    console.log('SessionManager: Starting session', jwk, duration)
+    logger.info('SessionManager: Starting session', jwk, duration)
     const response = await this.sendMessage('startSession', { jwk, duration })
     if (!response.success) {
       throw new Error(response.error || 'Failed to start session')
@@ -70,7 +73,7 @@ export class SessionManager {
     try {
       await this.sendMessage('recordActivity')
     } catch (error) {
-      console.warn('Failed to record activity:', error)
+      logger.warn('Failed to record activity:', error)
     }
   }
 }

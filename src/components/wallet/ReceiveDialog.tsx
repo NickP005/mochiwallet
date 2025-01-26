@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { Account } from 'mochimo-wallet'
 import { TagUtils } from 'mochimo-wots'
 import { QRCodeCanvas} from 'qrcode.react'
+import log from "loglevel"
+const logger = log.getLogger("ReceiveDialog");
 
 interface ReceiveDialogProps {
   isOpen: boolean
@@ -22,7 +24,7 @@ export function ReceiveDialog({ isOpen, onClose, account }: ReceiveDialogProps) 
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      console.error('Failed to copy:', error)
+      logger.error('Failed to copy:', error)
     }
   }
 
