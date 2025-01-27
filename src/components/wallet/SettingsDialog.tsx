@@ -248,7 +248,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowLogoutConfirm(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleLogout}
@@ -293,6 +293,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <AlertDialogCancel onClick={() => {
               setExportPassword('')
               setExportError(null)
+              setShowExportConfirm(false)
             }}>
               Cancel
             </AlertDialogCancel>
@@ -358,6 +359,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               setRecoveryError(null)
               setShowRecoveryPhrase(false)
               setRecoveryPhrase('')
+              setShowRecoveryConfirm(false)
             }}>
               Close
             </AlertDialogCancel>
