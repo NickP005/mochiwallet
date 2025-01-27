@@ -56,6 +56,7 @@ function truncateMiddle(str: string, startChars = 8, endChars = 8) {
   if (str.length <= startChars + endChars) return str
   return `${str.slice(0, startChars)}...${str.slice(-endChars)}`
 }
+const FEATURE_SECRET_PHRASE = false;
 
 function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
   const [showSecret, setShowSecret] = useState(false)
@@ -354,7 +355,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
       </div>
 
       {/* Secret Phrase Section */}
-      <div className="space-y-2">
+      {FEATURE_SECRET_PHRASE && <div className="space-y-2">
         <Button
           variant="outline"
           className="w-full justify-between"
@@ -381,7 +382,7 @@ function DetailView({ account, onBack, onUpdate, onDelete }: DetailViewProps) {
             <code className="text-xs break-all">{account.seed}</code>
           </motion.div>
         )}
-      </div>
+      </div>}
 
       {/* Add Password Verification Dialog */}
       {showSecretConfirm && (
