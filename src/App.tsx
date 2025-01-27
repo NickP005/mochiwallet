@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { WalletLayout } from "@/components/layout/wallet-layout"
-import { PlusCircle, Import } from "lucide-react"
+import { PlusCircle, Import, FileJson } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { CreateWallet } from "@/components/wallet/CreateWallet"
@@ -15,10 +15,11 @@ import { env } from "./config/env"
 import { sessionManager } from "./lib/services/SessionManager"
 import Loading from "./components/wallet/Loading"
 import { log } from "@/lib/utils/logging"
+import { ImportJsonWallet } from '@/components/wallet/ImportJsonWallet'
 const logger = log.getLogger("wallet");
 // const apiUrl = 'http://46.250.241.212:8081'
 // const apiUrl2 = 'http://35.208.202.76:8080'
-type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import' | 'loading'
+type WalletView = 'welcome' | 'create' | 'unlock' | 'dashboard' | 'import' | 'import-json' | 'loading'
 
 const network = new MeshNetworkService(env.apiUrl)
 NetworkProvider.setNetwork(network)
@@ -86,10 +87,12 @@ export function App() {
   }
 
   // Add handler for successful import
-  const handleWalletImported = async (wallet: any) => {
+  const handleWalletImported = async (wallet: any, jwk: JsonWebKey) => {
     try {
       setWallet(wallet)
       setView('dashboard')
+      //start session with the wallet password
+      sessionManager.startSession(JSON.stringify(jwk), 100)
     } catch (error) {
       logger.error('Error handling wallet import:', error)
     }
@@ -130,7 +133,16 @@ export function App() {
                 onClick={() => setView('import')}
               >
                 <Import className="mr-2" />
-                Import Existing Wallet
+                Import From Mnemonic Phrase
+              </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                size="lg"
+                onClick={() => setView('import-json')}
+              >
+                <FileJson className="mr-2" />
+                Import From Backup
               </Button>
             </div>
           </div>
@@ -175,6 +187,17 @@ export function App() {
           />
         </WalletLayout>
       )
+
+    case 'import-json':
+      return (
+        <WalletLayout>
+          <ImportJsonWallet 
+            onWalletImported={handleWalletImported} 
+            onBack={() => setView('welcome')} 
+          />
+        </WalletLayout>
+      )
+
     default:
       return (
         <WalletLayout>

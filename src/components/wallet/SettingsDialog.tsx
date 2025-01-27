@@ -6,7 +6,9 @@ import {
   Moon,
   Sun,
   Monitor,
-  ArrowLeft
+  ArrowLeft,
+  Download,
+  Lock
 } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import { StorageProvider, useWallet } from 'mochimo-wallet'
@@ -35,6 +37,9 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showExportConfirm, setShowExportConfirm] = useState(false)
+  const [exportPassword, setExportPassword] = useState('')
+  const [exportError, setExportError] = useState<string | null>(null)
   const { theme, setTheme } = useTheme() as { 
     theme: Theme, 
     setTheme: (theme: Theme) => void 
@@ -49,6 +54,39 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       window.location.reload()
     } catch (error) {
       logger.error('Error logging out:', error)
+    }
+  }
+
+  const handleExportWallet = async () => {
+    try {
+      // Verify password before export
+      const isVerified = await wallet.verifyWalletOwnership(exportPassword)
+      if (!isVerified) {
+        setExportError('Invalid password')
+        return
+      }
+
+      // Get wallet data
+      const walletData = await wallet.exportWalletJSON(exportPassword)
+      
+      // Create and download file
+      const blob = new Blob([JSON.stringify(walletData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mochimo-wallet-backup-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      // Reset state
+      setShowExportConfirm(false)
+      setExportPassword('')
+      setExportError(null)
+    } catch (error) {
+      setExportError('Failed to export wallet')
+      logger.error('Export error:', error)
     }
   }
 
@@ -130,6 +168,24 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           </div>
 
+          {/* Export Wallet */}
+          <div className="space-y-3 pt-4">
+            <h2 className="text-lg font-semibold">Backup</h2>
+            <p className="text-sm text-muted-foreground">
+              Export your wallet data
+            </p>
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowExportConfirm(true)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Wallet
+              </Button>
+            </div>
+          </div>
+
           {/* Version Info */}
           <div className="pt-8 text-center">
             <p className="text-sm text-muted-foreground">
@@ -160,6 +216,50 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             >
               Logout
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Export Confirmation Dialog */}
+      <AlertDialog open={showExportConfirm} onOpenChange={setShowExportConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Wallet</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter your password to export your wallet data. Keep this file safe and secure.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="password"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter your password"
+                value={exportPassword}
+                onChange={(e) => {
+                  setExportPassword(e.target.value)
+                  setExportError(null)
+                }}
+              />
+            </div>
+
+            {exportError && (
+              <p className="text-sm text-destructive">{exportError}</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setExportPassword('')
+              setExportError(null)
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <Button onClick={handleExportWallet}>
+              Export
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -8,7 +8,7 @@ import { log } from "@/lib/utils/logging"
 const logger = log.getLogger("wallet-modal");
 
 interface ImportWalletProps {
-  onWalletImported: (wallet: any) => void
+  onWalletImported: (wallet: any, jwk: JsonWebKey) => void
   onBack: () => void
 }
 
@@ -46,19 +46,21 @@ export function ImportWallet({ onWalletImported, onBack }: ImportWalletProps) {
       setLoading(true)
       // Create and unlock wallet
       const wallet = await w.createWallet(password, mnemonic)
-      await w.unlockWallet(password)
-
+      const { jwk } = await w.unlockWallet(password)
+      if (!jwk) {
+        throw new Error('Failed to unlock wallet')
+      }
       // Create first 5 accounts
-      let firstTag  = ''
+      let firstTag = ''
       for (let i = 0; i < 5; i++) {
-       const a =  await acc.createAccount(`Account ${i + 1}`)
-       if(!firstTag) firstTag = a.tag
+        const a = await acc.createAccount(`Account ${i + 1}`)
+        if (!firstTag) firstTag = a.tag
       }
 
       // Set first account as selected
       acc.setSelectedAccount(firstTag)
 
-      onWalletImported(wallet)
+      onWalletImported(wallet, jwk)
     } catch (error) {
       logger.error('Error importing wallet:', error)
       setError('Invalid recovery phrase')
@@ -70,9 +72,9 @@ export function ImportWallet({ onWalletImported, onBack }: ImportWalletProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="h-8 w-8 p-0"
           onClick={onBack}
         >
