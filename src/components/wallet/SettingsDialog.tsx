@@ -8,7 +8,10 @@ import {
   Monitor,
   ArrowLeft,
   Download,
-  Lock
+  Lock,
+  Eye,
+  EyeOff,
+  Key
 } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import { StorageProvider, useWallet } from 'mochimo-wallet'
@@ -26,6 +29,7 @@ import {
 import { version } from '../../../package.json'
 import { sessionManager } from '@/lib/services/SessionManager'
 import { log } from "@/lib/utils/logging"
+import { Input } from '@/components/ui/input'
 const logger = log.getLogger("wallet-settings");
 
 type Theme = 'dark' | 'light' | 'system'
@@ -35,6 +39,7 @@ interface SettingsDialogProps {
   onClose: () => void
 }
 
+const FEATURE_FLAG_RECOVERY_PHRASE = false
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showExportConfirm, setShowExportConfirm] = useState(false)
@@ -45,6 +50,11 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setTheme: (theme: Theme) => void
   }
   const wallet = useWallet()
+  const [showRecoveryConfirm, setShowRecoveryConfirm] = useState(false)
+  const [recoveryPassword, setRecoveryPassword] = useState('')
+  const [recoveryError, setRecoveryError] = useState<string | null>(null)
+  const [showRecoveryPhrase, setShowRecoveryPhrase] = useState(false)
+  const [recoveryPhrase, setRecoveryPhrase] = useState('')
 
   const handleLogout = async () => {
     try {
@@ -87,6 +97,27 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     } catch (error) {
       setExportError('Failed to export wallet')
       logger.error('Export error:', error)
+    }
+  }
+
+  const handleShowRecovery = async () => {
+    try {
+      const isVerified = await wallet.verifyWalletOwnership(recoveryPassword)
+      if (!isVerified) {
+        setRecoveryError('Invalid password')
+        return
+      }
+
+      const mnemonic = await wallet.getMnemonic(recoveryPassword)
+      if (mnemonic) {
+        setRecoveryPhrase(mnemonic)
+        setShowRecoveryPhrase(true)
+      } else {
+        setRecoveryError('Failed to get recovery phrase')
+      }
+    } catch (error) {
+      logger.error('Error showing recovery phrase:', error)
+      setRecoveryError('Failed to verify password')
     }
   }
 
@@ -167,7 +198,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </Button>
             </div>
           </div>
-          
+
           {/* Security Section */}
           <div className="space-y-3 pt-4">
             <h2 className="text-lg font-semibold">Security</h2>
@@ -175,8 +206,18 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               Manage your wallet security settings
             </p>
             <div className="space-y-4">
-              <Button 
-                variant="destructive" 
+              {FEATURE_FLAG_RECOVERY_PHRASE && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowRecoveryConfirm(true)}
+              >
+                <Key className="h-4 w-4 mr-2" />
+                  Show Recovery Phrase
+                </Button>
+              )}
+              <Button
+                variant="destructive"
                 className="w-full"
                 onClick={() => setShowLogoutConfirm(true)}
               >
@@ -258,6 +299,73 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <Button onClick={handleExportWallet}>
               Export
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Recovery Phrase Confirmation Dialog */}
+      <AlertDialog open={showRecoveryConfirm} onOpenChange={(open) => {
+        setShowRecoveryConfirm(open)
+        if (!open) {
+          setRecoveryPassword('')
+          setRecoveryError(null)
+          setShowRecoveryPhrase(false)
+          setRecoveryPhrase('')
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Show Recovery Phrase</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter your password to view your recovery phrase. Keep this phrase safe and never share it with anyone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {!showRecoveryPhrase ? (
+            <div className="space-y-4 py-4">
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  className="pl-9 pr-3"
+                  placeholder="Enter your password"
+                  value={recoveryPassword}
+                  onChange={(e) => {
+                    setRecoveryPassword(e.target.value)
+                    setRecoveryError(null)
+                  }}
+                />
+              </div>
+
+              {recoveryError && (
+                <p className="text-sm text-destructive">{recoveryError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <code className="text-xs break-all">{recoveryPhrase}</code>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Write this phrase down and store it in a safe place. You'll need it to restore your wallet if you reset it.
+              </p>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setRecoveryPassword('')
+              setRecoveryError(null)
+              setShowRecoveryPhrase(false)
+              setRecoveryPhrase('')
+            }}>
+              Close
+            </AlertDialogCancel>
+            {!showRecoveryPhrase && (
+              <Button onClick={handleShowRecovery}>
+                Show Phrase
+              </Button>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
