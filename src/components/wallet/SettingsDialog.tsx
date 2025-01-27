@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
-  LogOut, 
+import {
+  LogOut,
   AlertTriangle,
   Moon,
   Sun,
@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {version} from '../../../package.json'
+import { version } from '../../../package.json'
 import { sessionManager } from '@/lib/services/SessionManager'
 import { log } from "@/lib/utils/logging"
 const logger = log.getLogger("wallet-settings");
@@ -40,9 +40,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [showExportConfirm, setShowExportConfirm] = useState(false)
   const [exportPassword, setExportPassword] = useState('')
   const [exportError, setExportError] = useState<string | null>(null)
-  const { theme, setTheme } = useTheme() as { 
-    theme: Theme, 
-    setTheme: (theme: Theme) => void 
+  const { theme, setTheme } = useTheme() as {
+    theme: Theme,
+    setTheme: (theme: Theme) => void
   }
   const wallet = useWallet()
 
@@ -68,7 +68,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
       // Get wallet data
       const walletData = await wallet.exportWalletJSON(exportPassword)
-      
+
       // Create and download file
       const blob = new Blob([JSON.stringify(walletData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -94,7 +94,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
@@ -150,24 +150,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           </div>
 
-          {/* Security Section */}
-          <div className="space-y-3 pt-4">
-            <h2 className="text-lg font-semibold">Security</h2>
-            <p className="text-sm text-muted-foreground">
-              Manage your wallet security settings
-            </p>
-            <div className="space-y-4">
-              <Button 
-                variant="destructive" 
-                className="w-full"
-                onClick={() => setShowLogoutConfirm(true)}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-
           {/* Export Wallet */}
           <div className="space-y-3 pt-4">
             <h2 className="text-lg font-semibold">Backup</h2>
@@ -185,6 +167,25 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </Button>
             </div>
           </div>
+          
+          {/* Security Section */}
+          <div className="space-y-3 pt-4">
+            <h2 className="text-lg font-semibold">Security</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage your wallet security settings
+            </p>
+            <div className="space-y-4">
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => setShowLogoutConfirm(true)}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Reset Wallet
+              </Button>
+            </div>
+          </div>
+
 
           {/* Version Info */}
           <div className="pt-8 text-center">
@@ -199,22 +200,19 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Confirm Logout
-            </AlertDialogTitle>
+            <AlertDialogTitle>Reset Wallet</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to logout? You will need your mnemonic phrase to access your wallet again.
-
+              This will clear all wallet data. You will need your recovery phrase to restore access.
+              Make sure you have backed up your recovery phrase before proceeding.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowLogoutConfirm(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleLogout}
-              className="bg-destructive hover:bg-destructive/90"
             >
-              Logout
+              Reset Wallet
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
