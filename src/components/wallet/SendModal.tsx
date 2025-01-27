@@ -165,13 +165,13 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
 
   const validateDestination = (value: string) => {
     const trimmedValue = value.trim()
-    
+    const isValidLength = trimmedValue.length>=22 && trimmedValue.length<=31
     if (!trimmedValue) {
       return 'Destination is required'
     }
     
-    if (trimmedValue.length !== 30) {
-      return 'Tag must be exactly 30 characters'
+    if (!isValidLength) {
+      return 'Tag must be between 22 and 31 characters'
     }
 
     if (!TagUtils.validateBase58Tag(trimmedValue)) {
