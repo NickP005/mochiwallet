@@ -13,7 +13,6 @@ export const manifest = {
   },
   permissions: [
     "storage",
-    "tabs",
     "sidePanel"
   ],
   background: {

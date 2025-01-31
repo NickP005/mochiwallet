@@ -12,7 +12,6 @@ export var manifest = {
     },
     permissions: [
         "storage",
-        "tabs",
         "sidePanel"
     ],
     background: {
