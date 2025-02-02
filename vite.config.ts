@@ -4,13 +4,22 @@ import path from 'path'
 import { manifest } from './src/config/manifest'
 import fs from 'fs'
 
-function generateManifest(): Plugin {
+function generateManifest(mode: string): Plugin {
   return {
     name: 'generate-manifest',
     writeBundle() {
+      const finalManifest = {
+        ...manifest,
+        icons: mode === 'development' ? {} : {
+          "16": `icons/icon-16.png`,
+          "48": `icons/icon-48.png`,
+          "128": `icons/icon-128.png`
+        }
+      }
+
       fs.writeFileSync(
         'dist/manifest.json',
-        JSON.stringify(manifest, null, 2)
+        JSON.stringify(finalManifest, null, 2)
       )
     }
   }
@@ -42,7 +51,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      generateManifest()
+      generateManifest(mode)
     ],
     resolve: {
       alias: {
