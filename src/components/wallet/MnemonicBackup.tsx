@@ -39,7 +39,7 @@ export function MnemonicBackup({ mnemonic, onComplete, onBack, onRefreshMnemonic
             index,
             word: words[index]
         })))
-        setInputs(indices.map((index) => words[index]))
+        setInputs(indices.map(() =>''))
     }, [mnemonic])
 
     const handleCopy = async () => {
