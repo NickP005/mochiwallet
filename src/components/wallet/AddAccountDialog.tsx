@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Upload, Wallet, Loader2 } from 'lucide-react'
+import { Plus, Upload, Wallet, Loader2, Key } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { McmImportDialog } from './McmImportDialog'
 import { useWallet } from 'mochimo-wallet'
+import { LegacyKeypairImportDialog } from './LegacyKeypairImportDialog'
 
 
 interface AddAccountDialogProps {
@@ -31,6 +32,7 @@ export function AddAccountDialog({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [mcmImportOpen, setMcmImportOpen] = useState(false)
+  const [legacyKeypairOpen, setLegacyKeypairOpen] = useState(false)
 
   const handleClose = () => {
     setView('select')
@@ -138,6 +140,27 @@ export function AddAccountDialog({
                     </div>
                   </div>
                 </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-auto p-4"
+                  onClick={() => {
+                    handleClose()
+                    setLegacyKeypairOpen(true)
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Key className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-medium mb-1">Import Legacy Keypair</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Import account from WOTS+ keypair
+                      </p>
+                    </div>
+                  </div>
+                </Button>
               </motion.div>
             )}
 
@@ -171,7 +194,7 @@ export function AddAccountDialog({
                     >
                       Back
                     </Button>
-                    <Button 
+                    <Button
                       type="submit"
                       disabled={loading || !accountName.trim()}
                     >
@@ -261,6 +284,20 @@ export function AddAccountDialog({
           await wallet.importAccountsFromMcm(mcmData, (index) => {
             return indicesToImport.has(index)
           })
+        }}
+      />
+
+      <LegacyKeypairImportDialog
+        isOpen={legacyKeypairOpen}
+        onClose={() => setLegacyKeypairOpen(false)}
+        onImport={async (name, publicKey, privateKey) => {
+          const data = {
+            name,
+            address: publicKey,
+            secret: privateKey
+          }
+          await wallet.importAccountsFrom('keypair', { entries: [data] })
+          handleClose()
         }}
       />
     </>

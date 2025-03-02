@@ -187,6 +187,7 @@ export function McmImportDialog({
 
       const fileBuffer = await selectedFile.arrayBuffer()
       const decodedAccounts = await MCMDecoder.decode(Buffer.from(fileBuffer), password)
+      console.log("decodedAccounts", decodedAccounts)
       setMcmData(decodedAccounts)
       // Map entries and add tag and original index
       const accountsWithTags = decodedAccounts.entries.map((entry, index) => ({
