@@ -92,14 +92,14 @@ export function McmImportDialog({
               }
             }
           }
-          //check if account has seed
-          if(!account.secret) {
+          //check if account has valid seed
+          if(!account.secret || account.secret.length !== 32*2) {
             return {
               ...account,
               validation: {
                 isValid: false,
                 status: 'unavailable',
-                error: 'Account has no seed'
+                error: 'Account has no valid secret'
               }
             }
           }
