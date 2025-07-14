@@ -2,16 +2,14 @@ name: Create Unified Release
 
 on:
   workflow_run:
-    workflows: ["Build Chrome Extension", "Build iOS App"]
+    workflows: ["Build iOS App"]
     types:
       - completed
-    branches: 
-      - main
-      - ios
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    # runs-on: self-hosted
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
@@ -28,6 +26,9 @@ jobs:
             echo "No valid tag found, exiting"
             exit 1
           fi
+      - name: Set HEAD_SHA
+        run: |
+          echo "HEAD_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
 
       - name: Check if release already exists
         id: check-release
@@ -42,57 +43,114 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for other builds to complete
+      - name: Wait for other builds to complete and find run IDs
         run: |
-          echo "Waiting 2 minutes for other workflows to complete..."
-          sleep 120
-          echo "Checking for other running workflows..."
+          echo "Waiting 30 seconds for other workflows to complete..."
+          sleep 30
           
-          # Check for running workflows on the same tag
-          RUNNING_WORKFLOWS=$(gh run list --repo "${{ github.repository }}" \
-            --workflow="Build Chrome Extension" --workflow="Build iOS App" \
-            --status="in_progress" --json status,headBranch \
-            --jq '.[] | select(.headBranch == "${{ env.TAG_NAME }}") | .status' | wc -l)
+          # Get the latest successful run IDs for each workflow on this tag
+          # Use event instead of branch since tags are events, not branches
+          CHROME_RUN_ID=$(gh run list --repo "${{ github.repository }}" \
+            --workflow="Build Chrome Extension" \
+            --status="completed" \
+            --limit=5 \
+            --json databaseId,headSha \
+            --jq '.[] | select(.headSha == "${{ env.HEAD_SHA }}") | .databaseId' | head -1)
           
-          if [ "$RUNNING_WORKFLOWS" -gt 0 ]; then
-            echo "Other workflows still running, waiting additional 3 minutes..."
-            sleep 180
-          fi
+          IOS_RUN_ID=$(gh run list --repo "${{ github.repository }}" \
+            --workflow="Build iOS App" \
+            --status="completed" \
+            --limit=5 \
+            --json databaseId,headSha \
+            --jq '.[] | select(.headSha == "${{ env.HEAD_SHA }}") | .databaseId' | head -1)
+          
+          echo "CHROME_RUN_ID=$CHROME_RUN_ID" >> $GITHUB_ENV
+          echo "IOS_RUN_ID=$IOS_RUN_ID" >> $GITHUB_ENV
+          
+          echo "Chrome Run ID: $CHROME_RUN_ID"
+          echo "iOS Run ID: $IOS_RUN_ID"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Chrome artifacts
         continue-on-error: true
+        if: env.CHROME_RUN_ID != 'null' && env.CHROME_RUN_ID != ''
         uses: actions/download-artifact@v4
         with:
           name: chrome-extension-${{ env.TAG_NAME }}
           path: ./chrome-artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ env.CHROME_RUN_ID }}
 
       - name: Download iOS source artifacts
         continue-on-error: true
+        if: env.IOS_RUN_ID != 'null' && env.IOS_RUN_ID != ''
         uses: actions/download-artifact@v4
         with:
           name: ios-source-${{ env.TAG_NAME }}
           path: ./ios-source-artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
+          run-id: ${{ env.IOS_RUN_ID }}
+          
+      - name: Check iOS source artifact download
+        if: env.IOS_RUN_ID != 'null' && env.IOS_RUN_ID != ''
+        run: |
+          echo "Checking iOS source artifact download:"
+          ls -la ./ios-source-artifacts || echo "No files found"
+          
+          if [ ! -d "./ios-source-artifacts" ] || [ -z "$(ls -A ./ios-source-artifacts)" ]; then
+            echo "iOS source artifact download failed, trying alternative method..."
+            mkdir -p ./ios-source-artifacts
+            
+            # Get artifact ID directly
+            ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/runs/${{ env.IOS_RUN_ID }}/artifacts \
+              --jq '.artifacts[] | select(.name=="ios-source-${{ env.TAG_NAME }}") | .id')
+            
+            if [ -n "$ARTIFACT_ID" ]; then
+              echo "Found artifact ID: $ARTIFACT_ID"
+              
+              # Download the artifact archive directly
+              gh api repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip \
+                -H "Accept: application/vnd.github.v3+json" \
+                --output ./ios-source-artifacts/ios-source.zip
+              
+              # Extract if the download was successful
+              if [ -f "./ios-source-artifacts/ios-source.zip" ]; then
+                cd ./ios-source-artifacts
+                unzip ios-source.zip
+                rm ios-source.zip
+                cd ..
+              fi
+            else
+              echo "No matching artifact found via API"
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download iOS IPA artifacts
         continue-on-error: true
+        if: env.IOS_RUN_ID != 'null' && env.IOS_RUN_ID != ''
         uses: actions/download-artifact@v4
         with:
           name: ios-ipa-${{ env.TAG_NAME }}
           path: ./ios-ipa-artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
+          run-id: ${{ env.IOS_RUN_ID }}
 
       - name: Prepare release files
         run: |
           mkdir -p release-files
-          
+          echo "--- Chrome artifacts directory ---"
+          ls -l ./chrome-artifacts || echo "No chrome artifacts directory"
+          echo "--- iOS source artifacts directory ---"
+          ls -lR ./ios-source-artifacts || echo "No ios source artifacts directory"
+          echo "--- iOS IPA artifacts directory ---"
+          ls -lR ./ios-ipa-artifacts || echo "No ios ipa artifacts directory"
+
           # Chrome extension
           if [ -f "./chrome-artifacts/mochimo-chromium-${{ env.TAG_NAME }}.zip" ]; then
             cp "./chrome-artifacts/mochimo-chromium-${{ env.TAG_NAME }}.zip" ./release-files/
@@ -100,27 +158,43 @@ jobs:
           else
             echo "❌ Chrome extension not found"
           fi
-          
+
           # iOS source
-          if [ -f "./ios-source-artifacts/mochimo-ios-source-${{ env.TAG_NAME }}.zip" ]; then
-            cp "./ios-source-artifacts/mochimo-ios-source-${{ env.TAG_NAME }}.zip" ./release-files/
-            echo "✅ iOS source added"
+          IOS_ZIP="./ios-source-artifacts/ios-source-${{ env.TAG_NAME }}.zip"
+          if [ -f "$IOS_ZIP" ]; then
+            cp "$IOS_ZIP" ./release-files/mochimo-ios-source-${{ env.TAG_NAME }}.zip
+            echo "✅ iOS source added (direct match)"
           else
-            echo "❌ iOS source not found"
+            echo "❌ iOS source file not found at expected path: $IOS_ZIP"
+            echo "Searching for any zip file in ios-source-artifacts directory (including subdirectories):"
+            FOUND_ZIP=$(find ./ios-source-artifacts -type f -name "*.zip" | head -1)
+            if [ -n "$FOUND_ZIP" ]; then
+              cp "$FOUND_ZIP" ./release-files/mochimo-ios-source-${{ env.TAG_NAME }}.zip
+              echo "✅ iOS source added from search: $FOUND_ZIP"
+            else
+              echo "❌ No iOS source zip files found in ios-source-artifacts"
+            fi
           fi
-          
+
           # iOS IPA
           if [ -d "./ios-ipa-artifacts" ] && [ "$(ls -A ./ios-ipa-artifacts)" ]; then
-            find "./ios-ipa-artifacts" -name "*.ipa" -exec cp {} ./release-files/mochimo-ios-${{ env.TAG_NAME }}.ipa \;
-            echo "✅ iOS IPA added"
+            FOUND_IPA=$(find ./ios-ipa-artifacts -type f -name "*.ipa" | head -1)
+            if [ -n "$FOUND_IPA" ]; then
+              cp "$FOUND_IPA" ./release-files/mochimo-ios-${{ env.TAG_NAME }}.ipa
+              echo "✅ iOS IPA added: $FOUND_IPA"
+            else
+              echo "❌ No iOS IPA file found in ios-ipa-artifacts"
+            fi
           else
             echo "❌ iOS IPA not found (normal if certificates not configured)"
           fi
-          
+
           echo "Files in release:"
           ls -la ./release-files/
 
       - name: Create or Update GitHub Release
+        if: env.CHROME_RUN_ID != '' && env.IOS_RUN_ID != '' && env.CHROME_RUN_ID != 'null' && env.IOS_RUN_ID != 'null'
+        # Only create/update release when both Chrome and iOS builds have run for this tag
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
