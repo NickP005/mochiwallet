@@ -2,158 +2,197 @@
 
 A browser extension wallet and mobile app for the Mochimo cryptocurrency.
 
-## Prerequisiti
+## Prerequisites
 
-- Node.js >= 16.x e npm
+- Node.js >= 16.x and npm
 - [Capacitor CLI](https://capacitorjs.com/docs/getting-started):  
   ```sh
   npm install -g @capacitor/cli
   ```
-- Xcode (per build iOS)
-- Android Studio (per build Android)
-- CocoaPods (per dipendenze native iOS)
+- Xcode (for iOS build)
+- Android Studio (for Android build)
+- CocoaPods (for native iOS dependencies)
 
-### Installazione CocoaPods su Mac
+## Initial Setup
 
-**Per Mac M1/M2/M3/Intel con Ruby >= 3.1:**
+All dependencies are installed automatically. To start from scratch:
 
-1. Installa Ruby con Homebrew:
+```sh
+# Clone the repository
+git clone https://github.com/NickP005/mochiwallet.git
+cd mochiwallet
+
+# Install dependencies
+npm install
+
+# Complete iOS environment setup (installs CocoaPods, configures Capacitor, etc.)
+npm run setup:ios  # This script is provided in scripts/setup-ios.ts
+```
+
+### Manual CocoaPods installation (if needed)
+
+If automatic setup fails, you can install CocoaPods manually:
+
+1. Install Ruby with Homebrew:
    ```sh
    brew install ruby
    ```
    
-2. Aggiungi Ruby di Homebrew al PATH:
+2. Add Ruby from Homebrew to your PATH:
    ```sh
    echo 'export PATH="/opt/homebrew/opt/ruby/bin:$PATH"' >> ~/.zshrc
    echo 'export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"' >> ~/.zshrc
    source ~/.zshrc
-   ruby --version   # Deve essere almeno 3.1.x
+   ruby --version   # Should be at least 3.1.x
    ```
-   > Sostituisci `3.4.0` con la versione Ruby installata (controlla con `ls /opt/homebrew/lib/ruby/gems/`).
+   > Replace `3.4.0` with your installed version (check with `ls /opt/homebrew/lib/ruby/gems/`)
 
-3. Installa CocoaPods:
+3. Install CocoaPods:
    ```sh
    gem install cocoapods
    pod --version
    ```
 
-## Installazione dipendenze
+## Install dependencies
 
 ```sh
 npm install
 ```
 
-## Comandi principali
+## Main Commands
 
-| Comando              | Descrizione                                                                 |
+| Command              | Description                                                                 |
 |----------------------|-----------------------------------------------------------------------------|
-| `npm run build:web`  | Build della webapp in `dist/web`                                            |
-| `npm run preview`    | Serve la webapp reale da `dist/web`                                         |
-| `npm run build:ios`  | Build webapp, sync Capacitor, apre Xcode per sviluppo iOS                   |
+| `npm run dev`        | Start local development environment                                         |
+| `npm run build:web`  | Build the webapp in `dist/web`                                              |
+| `npm run preview`    | Serve the real web build from `dist/web`                                    |
+| `npm run setup:ios`  | Complete iOS environment setup (run once)                                   |
+| `npm run build:ios`  | Build webapp, sync Capacitor, open and build in Xcode automatically         |
+| `npm run dist:ios`   | Create build for App Store (requires Apple Developer account)               |
 
-## Build iOS (Capacitor)
+## iOS Build (Capacitor)
 
-### Setup iOS (già completato)
+### iOS Setup
 
-Il progetto è già configurato per iOS. Se hai bisogno di riconfigurare:
+If you clone the repository for the first time, run the complete setup:
 
-1. **Inizializza Capacitor (solo se necessario):**
-   ```sh
-   npx cap init
-   ```
+```sh
+npm run setup:ios
+```
 
-2. **Aggiungi piattaforma iOS (solo se necessario):**
-   ```sh
-   npx cap add ios
-   ```
+This command:
+1. Checks and installs Ruby and CocoaPods if needed
+2. Initializes Capacitor if not present
+3. Adds the iOS platform
+4. Installs native dependencies with CocoaPods
+5. Configures the Xcode project for automatic builds
 
-### Build e test iOS
+### Build and Test iOS
 
-1. **Build completa e apertura Xcode:**
-   ```sh
-   npm run build:ios
-   ```
-   Questo comando:
-   - Costruisce la webapp in modalità web
-   - Sincronizza Capacitor (`npx cap sync ios`)
-   - Apre Xcode automaticamente
+#### Local development
 
-2. **Build veloce senza aprire Xcode:**
-   ```sh
-   npm run build:web && npx cap sync ios
-   ```
+```sh
+npm run build:ios
+```
 
-3. **In Xcode:**
-   - Seleziona il target **App** nella barra laterale
-   - Scegli un simulatore o dispositivo fisico dal menu in alto
-   - Premi **Command+R** o clicca "Run" ▶️ per compilare e lanciare l'app
+This command:
+- Builds the webapp in web mode
+- Syncs Capacitor with updated web files
+- Opens Xcode and automatically starts the build
+- Launches the iOS simulator with the app running
 
-### Risoluzione problemi iOS
+#### Fast build during development
 
-- **Errori CocoaPods:**
+```sh
+npm run build:web && npx cap sync ios
+```
+
+If Xcode is already open, this command only updates the web files.
+
+#### Distribution build (App Store)
+
+```sh
+npm run dist:ios
+```
+
+This command:
+- Creates an optimized build
+- Configures the project for release
+- Archives the project for TestFlight/App Store
+
+### Troubleshooting
+
+- **CocoaPods errors:**
   ```sh
-  cd ios/App/App && pod install && cd ../../..
+  cd ios/App && pod install && cd ../..
   ```
 
-- **Comando `pod` non trovato:**
-  Verifica che Ruby e CocoaPods siano nel PATH:
+- **`pod` command not found:**
+  Check that Ruby and CocoaPods are in your PATH:
   ```sh
   ruby --version
   pod --version
   ```
 
-- **Errori di provisioning/certificati:**
-  Controlla in Xcode > Signing & Capabilities
+- **Provisioning/certificate errors:**
+  Check in Xcode > Signing & Capabilities
 
-- **Primi setup Xcode:**
+- **First Xcode setup:**
   ```sh
   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
   sudo xcodebuild -license
   ```
 
-### Note importanti
+### Important notes
 
-- **Non serve un account Apple** per testare su simulatore
-- **Per dispositivi fisici** serve un account Apple Developer e provisioning profile
-- **Se modifichi il codice web**, riesegui `npm run build:ios`
-- **Le icone iOS** vanno aggiornate manualmente in `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
+- **No Apple account needed** for simulator testing
+- **Physical devices require** an Apple Developer account and provisioning profile
+- **If you change web code**, rerun `npm run build:ios`
+- **iOS icons** should be updated in `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
+- **The iOS folder is gitignored** except for icons and Info.plist
 
-## Configurazione
+## Configuration
 
-Il progetto include:
+The project includes:
 - **Capacitor config**: `capacitor.config.ts`
 - **App ID**: `com.mochimo.ioswallet`
 - **App Name**: `Mochimo Wallet`
 - **Web directory**: `dist`
 
-## Development workflow
+## CI/CD with GitHub Actions
 
-1. Sviluppa e testa con la webapp:
-   ```sh
-   npm run dev
-   ```
+The project is ready for automation via GitHub Actions:
 
-2. Per testare su iOS:
-   ```sh
-   npm run build:ios
-   ```
+### Automatic iOS Build
 
-3. Per build veloci durante sviluppo:
-   ```sh
-   npm run build:web && npx cap sync ios
-   ```
+The CI/CD pipeline for iOS:
+1. Triggers on push to the `ios` branch
+2. Installs all required dependencies (including CocoaPods)
+3. Builds the webapp and syncs with Capacitor
+4. Builds iOS in macOS environment
+5. Uploads artifacts for testing
 
-## Struttura progetto
+### App Store Release
+
+To release to the App Store:
+1. Create a tag with the format `ios-v*` (e.g. `ios-v1.0.0`)
+2. The pipeline automatically creates a signed build
+3. The build is uploaded to TestFlight
+4. You can release it to the App Store from App Store Connect
+
+## Project Structure
 
 ```
 mochiwallet/
-├── src/                    # Sorgenti webapp
+├── src/                    # Webapp source
 ├── dist/                   # Build output
-├── ios/                    # Progetto iOS nativo
-├── capacitor.config.ts     # Configurazione Capacitor
-└── package.json           # Dipendenze e scripts
+├── ios/                    # Native iOS project (gitignored)
+│   └── App/App/Assets.xcassets/AppIcon.appiconset/ # Icons (tracked)
+├── .github/workflows/      # GitHub Actions CI/CD
+├── capacitor.config.ts     # Capacitor configuration
+└── package.json           # Dependencies and scripts
 ```
 
-## Licenza
+## License
 
 MIT

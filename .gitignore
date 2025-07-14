@@ -34,6 +34,17 @@ yarn-error.log*
 .DS_Store
 *.pem
 ui_screenshots
+
+# iOS - escludi tutta la cartella tranne i file specifici da tenere
+ios/**
+!ios/App/App/Assets.xcassets/AppIcon.appiconset/**
+!ios/App/App/Info.plist
+
+# Android  
+android/**
+!android/app/src/main/res/mipmap-*/
+!android/app/src/main/AndroidManifest.xml
+
 # Environment
 .env
 .env.local
@@ -43,5 +54,3 @@ ui_screenshots
 .env*.local
 .env.production
 package-lock.json
-
-ios/
