@@ -1,0 +1,167 @@
+name: Create Unified Release
+
+on:
+  workflow_run:
+    workflows: ["Build Chrome Extension", "Build iOS App"]
+    types:
+      - completed
+    branches: 
+      - main
+      - ios
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get tag from workflow run
+        id: get-tag
+        run: |
+          TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+            echo "Valid tag found: $TAG_NAME"
+          else
+            echo "No valid tag found, exiting"
+            exit 1
+          fi
+
+      - name: Check if release already exists
+        id: check-release
+        run: |
+          RELEASE_EXISTS=$(gh release view "${{ env.TAG_NAME }}" --repo "${{ github.repository }}" 2>/dev/null && echo "true" || echo "false")
+          echo "RELEASE_EXISTS=$RELEASE_EXISTS" >> $GITHUB_ENV
+          if [ "$RELEASE_EXISTS" = "true" ]; then
+            echo "Release already exists, will update it"
+          else
+            echo "New release will be created"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for other builds to complete
+        run: |
+          echo "Waiting 2 minutes for other workflows to complete..."
+          sleep 120
+          echo "Checking for other running workflows..."
+          
+          # Check for running workflows on the same tag
+          RUNNING_WORKFLOWS=$(gh run list --repo "${{ github.repository }}" \
+            --workflow="Build Chrome Extension" --workflow="Build iOS App" \
+            --status="in_progress" --json status,headBranch \
+            --jq '.[] | select(.headBranch == "${{ env.TAG_NAME }}") | .status' | wc -l)
+          
+          if [ "$RUNNING_WORKFLOWS" -gt 0 ]; then
+            echo "Other workflows still running, waiting additional 3 minutes..."
+            sleep 180
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Chrome artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension-${{ env.TAG_NAME }}
+          path: ./chrome-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download iOS source artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-source-${{ env.TAG_NAME }}
+          path: ./ios-source-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+
+      - name: Download iOS IPA artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa-${{ env.TAG_NAME }}
+          path: ./ios-ipa-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          
+          # Chrome extension
+          if [ -f "./chrome-artifacts/mochimo-chromium-${{ env.TAG_NAME }}.zip" ]; then
+            cp "./chrome-artifacts/mochimo-chromium-${{ env.TAG_NAME }}.zip" ./release-files/
+            echo "✅ Chrome extension added"
+          else
+            echo "❌ Chrome extension not found"
+          fi
+          
+          # iOS source
+          if [ -f "./ios-source-artifacts/mochimo-ios-source-${{ env.TAG_NAME }}.zip" ]; then
+            cp "./ios-source-artifacts/mochimo-ios-source-${{ env.TAG_NAME }}.zip" ./release-files/
+            echo "✅ iOS source added"
+          else
+            echo "❌ iOS source not found"
+          fi
+          
+          # iOS IPA
+          if [ -d "./ios-ipa-artifacts" ] && [ "$(ls -A ./ios-ipa-artifacts)" ]; then
+            find "./ios-ipa-artifacts" -name "*.ipa" -exec cp {} ./release-files/mochimo-ios-${{ env.TAG_NAME }}.ipa \;
+            echo "✅ iOS IPA added"
+          else
+            echo "❌ iOS IPA not found (normal if certificates not configured)"
+          fi
+          
+          echo "Files in release:"
+          ls -la ./release-files/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: ./release-files/*
+          body: |
+            ## Mochimo Wallet Release ${{ env.TAG_NAME }}
+            
+            ### Files included:
+            
+            **Chrome Extension**:
+            - `mochimo-chromium-${{ env.TAG_NAME }}.zip`: Ready-to-install Chrome extension
+            
+            **iOS App**:
+            - `mochimo-ios-source-${{ env.TAG_NAME }}.zip`: iOS project files for Xcode
+            - `mochimo-ios-${{ env.TAG_NAME }}.ipa`: Compiled iOS app for App Store (if available)
+            
+            ### Installation Instructions:
+            
+            #### Chrome Extension:
+            1. Download the `mochimo-chromium-${{ env.TAG_NAME }}.zip` file
+            2. Extract the contents to a folder
+            3. Open Chrome and go to `chrome://extensions`
+            4. Enable Developer mode
+            5. Click "Load unpacked" and select the extracted folder
+            
+            #### iOS App:
+            **For Development (using Xcode):**
+            1. Download `mochimo-ios-source-${{ env.TAG_NAME }}.zip`
+            2. Extract and open `App.xcworkspace` in Xcode
+            3. Build and run on simulator or device
+            
+            **For App Store (if IPA is available):**
+            - Use the `.ipa` file with Xcode or Transporter for App Store submission
+            
+            ---
+            
+            This release was automatically generated by GitHub Actions.
+            
+            - Chrome build from: `main` branch
+            - iOS build from: `ios` branch
+            
+            Last updated: $(date -u)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

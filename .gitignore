@@ -35,10 +35,12 @@ yarn-error.log*
 *.pem
 ui_screenshots
 
-# iOS - escludi tutta la cartella tranne i file specifici da tenere
+# iOS - Track only essential files for the project
 ios/**
-!ios/App/App/Assets.xcassets/AppIcon.appiconset/**
+!ios/App/App/Assets.xcassets/
+!ios/App/App/Assets.xcassets/**
 !ios/App/App/Info.plist
+!ios/App/App/config.xml
 
 # Android  
 android/**
