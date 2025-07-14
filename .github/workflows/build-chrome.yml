@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main  # Solo su branch main
-
 jobs:
   build-chrome:
     runs-on: ubuntu-latest
