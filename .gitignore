@@ -43,3 +43,6 @@ ui_screenshots
 .env*.local
 .env.production
 package-lock.json
+
+ios/**
+android/**
