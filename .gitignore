@@ -44,7 +44,12 @@ ios/**
 
 # Android  
 android/**
+!android/app/
+!android/app/src/
+!android/app/src/main/
+!android/app/src/main/res/
 !android/app/src/main/res/mipmap-*/
+!android/app/src/main/res/mipmap-*/**
 !android/app/src/main/AndroidManifest.xml
 
 # Environment
@@ -56,6 +61,3 @@ android/**
 .env*.local
 .env.production
 package-lock.json
-
-ios/**
-android/**
