@@ -25,7 +25,24 @@ if (fs.existsSync(assetsAndroidPath)) {
     const sourcePath = path.join(assetsAndroidPath, folder);
     const destPath = path.join(androidResPath, folder);
     console.log(`Copying ${folder}...`);
-    spawnSync('cp', ['-r', sourcePath, destPath], { stdio: 'inherit' });
+    
+    // Remove destination folder if it exists to avoid conflicts
+    if (fs.existsSync(destPath)) {
+      fs.rmSync(destPath, { recursive: true, force: true });
+      console.log(`Removed existing ${folder} folder`);
+    }
+    
+    // Create destination directory
+    fs.mkdirSync(destPath, { recursive: true });
+    
+    // Copy each file individually
+    const files = fs.readdirSync(sourcePath);
+    files.forEach(file => {
+      const sourceFile = path.join(sourcePath, file);
+      const destFile = path.join(destPath, file);
+      fs.copyFileSync(sourceFile, destFile);
+      console.log(`Copied ${file} to ${folder}`);
+    });
   });
   
   // Copy AndroidManifest.xml if exists
