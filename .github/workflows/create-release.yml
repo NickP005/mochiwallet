@@ -283,52 +283,59 @@ jobs:
           BODY="## Mochimo Wallet Release $TAG\n\n### Files included:\n"
           # Chrome
           if [ -f "./release-files/mochimo-chromium-$TAG.zip" ]; then
-            BODY+=$'\n**Chrome Extension**:\n- `mochimo-chromium-'$TAG'.zip`: Ready-to-install Chrome extension\n'
+            BODY+=$'\n#### Chrome Extension\n- **mochimo-chromium-'$TAG'.zip**: Ready-to-install Chrome extension'
           fi
           # iOS
           if [ -f "./release-files/mochimo-ios-source-$TAG.zip" ]; then
-            BODY+=$'\n**iOS App**:\n- `mochimo-ios-source-'$TAG'.zip`: iOS project files for Xcode\n'
+            BODY+=$'\n#### iOS App\n- **mochimo-ios-source-'$TAG'.zip**: iOS project files for Xcode'
           fi
           if [ -f "./release-files/mochimo-ios-$TAG.ipa" ]; then
-            BODY+=$'- `mochimo-ios-'$TAG'.ipa`: Compiled iOS app for App Store\n'
+            BODY+=$'\n- **mochimo-ios-'$TAG'.ipa**: Compiled iOS app for App Store'
           fi
           # Android
           if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ]; then
-            BODY+=$'\n**Android App**:\n- `mochimo-android-debug-'$TAG'.apk`: Debug APK for testing\n'
+            BODY+=$'\n#### Android App'
+            BODY+=$'\n- **mochimo-android-debug-'$TAG'.apk**: Debug APK for testing'
           fi
           if [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
-            BODY+=$'- `mochimo-android-release-'$TAG'.apk`: Release APK for installation\n'
+            BODY+=$'\n- **mochimo-android-release-'$TAG'.apk**: Release APK for installation'
           fi
           if [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
-            BODY+=$'- `mochimo-android-release-'$TAG'.aab`: Android App Bundle for Play Store\n'
+            BODY+=$'\n- **mochimo-android-release-'$TAG'.aab**: Android App Bundle for Play Store'
           fi
-          BODY+=$'\n### Installation Instructions:\n'
+
+          BODY+=$'\n\n---\n\n### Installation Instructions\n'
           # Chrome instructions
           if [ -f "./release-files/mochimo-chromium-$TAG.zip" ]; then
-            BODY+=$'\n#### Chrome Extension:\n1. Download the `mochimo-chromium-'$TAG'.zip` file\n2. Extract the contents to a folder\n3. Open Chrome and go to `chrome://extensions`\n4. Enable Developer mode\n5. Click "Load unpacked" and select the extracted folder\n'
+            BODY+=$'\n**Chrome Extension:**\n'
+            BODY+=$'1. Scarica **mochimo-chromium-'$TAG'.zip**\n2. Estrai il contenuto in una cartella\n3. Apri Chrome e vai su `chrome://extensions`\n4. Abilita la modalità sviluppatore\n5. Clicca su "Carica estensione non pacchettizzata" e seleziona la cartella estratta\n'
           fi
           # iOS instructions
           if [ -f "./release-files/mochimo-ios-source-$TAG.zip" ]; then
-            BODY+=$'\n#### iOS App:\n**For Development (using Xcode):**\n1. Download `mochimo-ios-source-'$TAG'.zip`\n2. Extract and open `App.xcworkspace` in Xcode\n3. Build and run on simulator or device\n'
+            BODY+=$'\n**iOS App (Xcode):**\n'
+            BODY+=$'1. Scarica **mochimo-ios-source-'$TAG'.zip**\n2. Estrai e apri `App.xcworkspace` in Xcode\n3. Compila ed esegui su simulatore o dispositivo\n'
           fi
           if [ -f "./release-files/mochimo-ios-$TAG.ipa" ]; then
-            BODY+=$'\n**For App Store:**\n- Use the `.ipa` file with Xcode or Transporter for App Store submission\n'
+            BODY+=$'\n**iOS App Store:**\n- Usa il file `.ipa` con Xcode o Transporter per la pubblicazione su App Store\n'
           fi
           # Android instructions
-          if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
-            BODY+=$'\n#### Android App:\n'
+          if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
+            BODY+=$'\n**Android App:**\n'
             if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ]; then
-              BODY+=$'1. Download the `mochimo-android-debug-'$TAG'.apk` for direct installation on a device.\n'
+              BODY+=$'- Scarica **mochimo-android-debug-'$TAG'.apk** per installazione diretta su dispositivo\n'
             fi
             if [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
-              BODY+=$'1. Download the `mochimo-android-release-'$TAG'.apk` for direct installation on a device.\n'
+              BODY+=$'- Scarica **mochimo-android-release-'$TAG'.apk** per installazione diretta su dispositivo\n'
             fi
             if [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
-              BODY+=$'2. Download the `mochimo-android-release-'$TAG'.aab` for Play Store submission (upload via Google Play Console).\n'
+              BODY+=$'- Scarica **mochimo-android-release-'$TAG'.aab** per pubblicazione su Play Store (Google Play Console)\n'
             fi
-            BODY+=$'3. Transfer APK to your Android device, enable installation from unknown sources, and open the APK file to install.\n'
+            if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
+              BODY+=$'- Trasferisci l’APK sul dispositivo, abilita l’installazione da sorgenti sconosciute e apri il file per installare\n'
+            fi
           fi
-          BODY+=$'\n---\n\nThis release was automatically generated by GitHub Actions.\n\n- Chrome build from: `main` branch\n- iOS build from: `ios` branch\n- Android build from: `android` branch\n\nLast updated: '$(date -u)'\n'
+
+          BODY+=$'\n---\n\nRelease generata automaticamente da GitHub Actions.\n\n- Chrome build da: `main`\n- iOS build da: `ios`\n- Android build da: `android`\n\nUltimo aggiornamento: '$(date -u)'\n'
           echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
           echo "$BODY" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
