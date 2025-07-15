@@ -1,7 +1,7 @@
 # Mochimo Wallet
-**Pre-built iOS releases are available on [GitHub Releases](https://github.com/NickP005/mochiwallet/releases).**
+**Pre-built Android releases are available on [GitHub Releases](https://github.com/NickP005/mochiwallet/releases).**
 
-A browser extension wallet and mobile app for the Mochimo cryptocurrency.
+A browser extension wallet and Android mobile app for the Mochimo cryptocurrency.
 
 ## Prerequisites
 
@@ -10,9 +10,8 @@ A browser extension wallet and mobile app for the Mochimo cryptocurrency.
   ```sh
   npm install -g @capacitor/cli
   ```
-- Xcode (for iOS build)
 - Android Studio (for Android build)
-- CocoaPods (for native iOS dependencies)
+- Java Development Kit (JDK)
 
 ## Initial Setup
 
@@ -26,32 +25,36 @@ cd mochiwallet
 # Install dependencies
 npm install
 
-# Complete iOS environment setup (installs CocoaPods, configures Capacitor, etc.)
-npm run setup:ios  # This script is provided in scripts/setup-ios.ts
+# Complete Android setup (configure Capacitor, etc.)
+npm run setup:android
 ```
 
-### Manual CocoaPods installation (if needed)
+### Android Development Setup
 
-If automatic setup fails, you can install CocoaPods manually:
+Make sure your development environment meets these requirements:
 
-1. Install Ruby with Homebrew:
+1. Install Android Studio from the [official website](https://developer.android.com/studio)
+   
+2. Install the Android SDK through Android Studio:
+   - Open Android Studio > Settings/Preferences > Appearance & Behavior > System Settings > Android SDK
+   - Make sure you have installed:
+     - Android SDK Platform
+     - Android SDK Build-Tools
+     - Android SDK Command-line Tools
+     - Android SDK Platform-Tools
+
+3. Set up environment variables:
    ```sh
-   brew install ruby
+   # For macOS/Linux
+   export ANDROID_HOME=$HOME/Library/Android/sdk
+   export PATH=$PATH:$ANDROID_HOME/tools
+   export PATH=$PATH:$ANDROID_HOME/tools/bin
+   export PATH=$PATH:$ANDROID_HOME/platform-tools
    ```
    
-2. Add Ruby from Homebrew to your PATH:
+4. Make sure you have JDK installed:
    ```sh
-   echo 'export PATH="/opt/homebrew/opt/ruby/bin:$PATH"' >> ~/.zshrc
-   echo 'export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"' >> ~/.zshrc
-   source ~/.zshrc
-   ruby --version   # Should be at least 3.1.x
-   ```
-   > Replace `3.4.0` with your installed version (check with `ls /opt/homebrew/lib/ruby/gems/`)
-
-3. Install CocoaPods:
-   ```sh
-   gem install cocoapods
-   pod --version
+   java -version
    ```
 
 ## Install dependencies
@@ -62,101 +65,95 @@ npm install
 
 ## Main Commands
 
-| Command              | Description                                                                 |
-|----------------------|-----------------------------------------------------------------------------|
-| `npm run dev`        | Start local development environment                                         |
-| `npm run build:web`  | Build the webapp in `dist/web`                                              |
-| `npm run preview`    | Serve the real web build from `dist/web`                                    |
-| `npm run setup:ios`  | Complete iOS environment setup (run once)                                   |
-| `npm run build:ios`  | Build webapp, sync Capacitor, open and build in Xcode automatically         |
-| `npm run dist:ios`   | Create build for App Store (requires Apple Developer account)               |
+| Command               | Description                                                             |
+|-----------------------|-------------------------------------------------------------------------|
+| `npm run dev`         | Start local development environment                                     |
+| `npm run build:web`   | Build the webapp in `dist/web`                                          |
+| `npm run preview`     | Serve the real web build from `dist/web`                                |
+| `npm run setup:android` | Complete Android environment setup (run once)                         |
+| `npm run build:android` | Build webapp, sync Capacitor, and create Android APK                   |
+| `npm run dist:android` | Create optimized build for Google Play Store                           |
 
-## iOS Build (Capacitor)
+## Android Build (Capacitor)
 
-### iOS Setup
+### Android Setup
 
 If you clone the repository for the first time, run the complete setup:
 
 ```sh
-npm run setup:ios
+npm run setup:android
 ```
 
 This command:
-1. Checks and installs Ruby and CocoaPods if needed
-2. Initializes Capacitor if not present
-3. Adds the iOS platform
-4. Installs native dependencies with CocoaPods
-5. Configures the Xcode project for automatic builds
+1. Initializes Capacitor if not present
+2. Adds the Android platform
+3. Configures the Android project for automated builds
+4. Syncs web assets
 
-### Build and Test iOS
+### Build and Test Android
 
 #### Local development
 
 ```sh
-npm run build:ios
+npm run build:android
 ```
 
 This command:
 - Builds the webapp in web mode
 - Syncs Capacitor with updated web files
-- Opens Xcode and automatically starts the build
-- Launches the iOS simulator with the app running
+- Builds the Android APK
+- The APK can be found in `android/app/build/outputs/apk/debug/app-debug.apk`
 
 #### Fast build during development
 
 ```sh
-npm run build:web && npx cap sync ios
+npm run build:web && npx cap sync android
 ```
 
-If Xcode is already open, this command only updates the web files.
+If Android Studio is already open, this command only updates the web files.
 
-#### Distribution build (App Store)
+#### Distribution build (Google Play)
 
 ```sh
-npm run dist:ios
+npm run dist:android
 ```
 
 This command:
 - Creates an optimized build
 - Configures the project for release
-- Archives the project for TestFlight/App Store
+- Creates a signed bundle for Google Play Store submission
 
 ### Troubleshooting
 
-- **CocoaPods errors:**
+- **Gradle errors:**
   ```sh
-  cd ios/App && pod install && cd ../..
+  cd android && ./gradlew clean && cd ..
   ```
 
-- **`pod` command not found:**
-  Check that Ruby and CocoaPods are in your PATH:
-  ```sh
-  ruby --version
-  pod --version
-  ```
+- **JDK version issues:**
+  Make sure you have the correct JDK version installed and configured in your PATH
 
-- **Provisioning/certificate errors:**
-  Check in Xcode > Signing & Capabilities
+- **Android SDK not found:**
+  Verify your ANDROID_HOME environment variable is set correctly
 
-- **First Xcode setup:**
+- **Emulator not starting:**
   ```sh
-  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-  sudo xcodebuild -license
+  $ANDROID_HOME/emulator/emulator -avd <avd_name> -netdelay none -netspeed full
   ```
 
 ### Important notes
 
-- **No Apple account needed** for simulator testing
-- **Physical devices require** an Apple Developer account and provisioning profile
-- **If you change web code**, rerun `npm run build:ios`
-- **iOS icons** should be updated in `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
-- **The iOS folder is gitignored** except for icons and Info.plist
+- **No Google account needed** for local/emulator testing
+- **Publishing requires** a Google Play Developer account
+- **If you change web code**, rerun `npm run build:android`
+- **Android icons** should be updated in `android/app/src/main/res/mipmap-*/`
+- **The android folder is gitignored** except for icon resources and manifest
 
 ## Configuration
 
 The project includes:
 - **Capacitor config**: `capacitor.config.ts`
-- **App ID**: `com.mochimo.ioswallet`
+- **App ID**: `com.mochimo.androidwallet`
 - **App Name**: `Mochimo Wallet`
 - **Web directory**: `dist`
 
@@ -164,22 +161,22 @@ The project includes:
 
 The project is ready for automation via GitHub Actions:
 
-### Automatic iOS Build
+### Automatic Android Build
 
-The CI/CD pipeline for iOS:
-1. Triggers on push to the `ios` branch
-2. Installs all required dependencies (including CocoaPods)
+The CI/CD pipeline for Android:
+1. Triggers on push to the `android` branch
+2. Installs all required dependencies (including Android SDK)
 3. Builds the webapp and syncs with Capacitor
-4. Builds iOS in macOS environment
+4. Builds Android APK in Ubuntu environment
 5. Uploads artifacts for testing
 
-### App Store Release
+### Google Play Release
 
-To release to the App Store:
-1. Create a tag with the format `ios-v*` (e.g. `ios-v1.0.0`)
+To release to Google Play:
+1. Create a tag with the format `android-v*` (e.g. `android-v1.0.0`)
 2. The pipeline automatically creates a signed build
-3. The build is uploaded to TestFlight
-4. You can release it to the App Store from App Store Connect
+3. The build is attached to the GitHub Release
+4. You can download the APK from GitHub Releases or upload it to Google Play Console
 
 ## Project Structure
 
@@ -187,8 +184,8 @@ To release to the App Store:
 mochiwallet/
 ├── src/                    # Webapp source
 ├── dist/                   # Build output
-├── ios/                    # Native iOS project (gitignored)
-│   └── App/App/Assets.xcassets/AppIcon.appiconset/ # Icons (tracked)
+├── android/                # Native Android project (gitignored)
+│   └── app/src/main/res/mipmap-*/ # Icons (tracked)
 ├── .github/workflows/      # GitHub Actions CI/CD
 ├── capacitor.config.ts     # Capacitor configuration
 └── package.json           # Dependencies and scripts

@@ -2,7 +2,7 @@ name: Create Unified Release
 
 on:
   workflow_run:
-    workflows: ["Build iOS App"]
+    workflows: ["Build iOS App", "Build Android App"]
     types:
       - completed
 
@@ -64,11 +64,20 @@ jobs:
             --json databaseId,headSha \
             --jq '.[] | select(.headSha == "${{ env.HEAD_SHA }}") | .databaseId' | head -1)
           
+          ANDROID_RUN_ID=$(gh run list --repo "${{ github.repository }}" \
+            --workflow="Build Android App" \
+            --status="completed" \
+            --limit=5 \
+            --json databaseId,headSha \
+            --jq '.[] | select(.headSha == "${{ env.HEAD_SHA }}") | .databaseId' | head -1)
+          
           echo "CHROME_RUN_ID=$CHROME_RUN_ID" >> $GITHUB_ENV
           echo "IOS_RUN_ID=$IOS_RUN_ID" >> $GITHUB_ENV
+          echo "ANDROID_RUN_ID=$ANDROID_RUN_ID" >> $GITHUB_ENV
           
           echo "Chrome Run ID: $CHROME_RUN_ID"
           echo "iOS Run ID: $IOS_RUN_ID"
+          echo "Android Run ID: $ANDROID_RUN_ID"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -140,6 +149,28 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ env.IOS_RUN_ID }}
+          
+      - name: Download Android Debug APK artifacts
+        continue-on-error: true
+        if: env.ANDROID_RUN_ID != 'null' && env.ANDROID_RUN_ID != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: android-debug-${{ env.TAG_NAME }}
+          path: ./android-debug-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.ANDROID_RUN_ID }}
+          
+      - name: Download Android Release APK artifacts
+        continue-on-error: true
+        if: env.ANDROID_RUN_ID != 'null' && env.ANDROID_RUN_ID != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-${{ env.TAG_NAME }}
+          path: ./android-release-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.ANDROID_RUN_ID }}
 
       - name: Prepare release files
         run: |
@@ -150,6 +181,9 @@ jobs:
           ls -lR ./ios-source-artifacts || echo "No ios source artifacts directory"
           echo "--- iOS IPA artifacts directory ---"
           ls -lR ./ios-ipa-artifacts || echo "No ios ipa artifacts directory"
+          echo "--- Android APK artifacts directory ---"
+          ls -lR ./android-debug-artifacts || echo "No Android debug artifacts directory"
+          ls -lR ./android-release-artifacts || echo "No Android release artifacts directory"
 
           # Chrome extension
           if [ -f "./chrome-artifacts/mochimo-chromium-${{ env.TAG_NAME }}.zip" ]; then
@@ -188,13 +222,39 @@ jobs:
           else
             echo "❌ iOS IPA not found (normal if certificates not configured)"
           fi
+          
+          # Android Debug APK
+          if [ -d "./android-debug-artifacts" ] && [ "$(ls -A ./android-debug-artifacts)" ]; then
+            FOUND_APK_DEBUG=$(find ./android-debug-artifacts -type f -name "*.apk" | head -1)
+            if [ -n "$FOUND_APK_DEBUG" ]; then
+              cp "$FOUND_APK_DEBUG" ./release-files/mochimo-android-debug-${{ env.TAG_NAME }}.apk
+              echo "✅ Android Debug APK added: $FOUND_APK_DEBUG"
+            else
+              echo "❌ No Android Debug APK file found in android-debug-artifacts"
+            fi
+          else
+            echo "❌ Android Debug APK not found"
+          fi
+          
+          # Android Release APK
+          if [ -d "./android-release-artifacts" ] && [ "$(ls -A ./android-release-artifacts)" ]; then
+            FOUND_APK_RELEASE=$(find ./android-release-artifacts -type f -name "*.apk" | head -1)
+            if [ -n "$FOUND_APK_RELEASE" ]; then
+              cp "$FOUND_APK_RELEASE" ./release-files/mochimo-android-release-${{ env.TAG_NAME }}.apk
+              echo "✅ Android Release APK added: $FOUND_APK_RELEASE"
+            else
+              echo "❌ No Android Release APK file found in android-release-artifacts"
+            fi
+          else
+            echo "❌ Android Release APK not found"
+          fi
 
           echo "Files in release:"
           ls -la ./release-files/
 
       - name: Create or Update GitHub Release
-        if: env.CHROME_RUN_ID != '' && env.IOS_RUN_ID != '' && env.CHROME_RUN_ID != 'null' && env.IOS_RUN_ID != 'null'
-        # Only create/update release when both Chrome and iOS builds have run for this tag
+        if: env.CHROME_RUN_ID != '' || env.IOS_RUN_ID != '' || env.ANDROID_RUN_ID != ''
+        # Only create/update release when at least one build has run for this tag
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
@@ -210,6 +270,10 @@ jobs:
             **iOS App**:
             - `mochimo-ios-source-${{ env.TAG_NAME }}.zip`: iOS project files for Xcode
             - `mochimo-ios-${{ env.TAG_NAME }}.ipa`: Compiled iOS app for App Store (if available)
+            
+            **Android App**:
+            - `mochimo-android-debug-${{ env.TAG_NAME }}.apk`: Debug APK for testing
+            - `mochimo-android-release-${{ env.TAG_NAME }}.apk`: Release APK for installation
             
             ### Installation Instructions:
             
@@ -229,12 +293,19 @@ jobs:
             **For App Store (if IPA is available):**
             - Use the `.ipa` file with Xcode or Transporter for App Store submission
             
+            #### Android App:
+            1. Download the `mochimo-android-debug-${{ env.TAG_NAME }}.apk` or `mochimo-android-release-${{ env.TAG_NAME }}.apk`
+            2. Transfer to your Android device
+            3. Enable installation from unknown sources in your device settings
+            4. Open the APK file on your device to install
+            
             ---
             
             This release was automatically generated by GitHub Actions.
             
             - Chrome build from: `main` branch
             - iOS build from: `ios` branch
+            - Android build from: `android` branch
             
             Last updated: $(date -u)
         env:
