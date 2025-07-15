@@ -12,6 +12,34 @@ if (!fs.existsSync(path.resolve('./android'))) {
   console.log('Android platform already exists');
 }
 
+// Copy Android assets from assets/android to android/app/src/main
+console.log('📦 Copying Android assets...');
+const assetsAndroidPath = path.resolve('./assets/android');
+const androidResPath = path.resolve('./android/app/src/main/res');
+const androidManifestPath = path.resolve('./android/app/src/main/AndroidManifest.xml');
+
+if (fs.existsSync(assetsAndroidPath)) {
+  // Copy mipmap folders
+  const mipmapFolders = fs.readdirSync(assetsAndroidPath).filter(name => name.startsWith('mipmap-'));
+  mipmapFolders.forEach(folder => {
+    const sourcePath = path.join(assetsAndroidPath, folder);
+    const destPath = path.join(androidResPath, folder);
+    console.log(`Copying ${folder}...`);
+    spawnSync('cp', ['-r', sourcePath, destPath], { stdio: 'inherit' });
+  });
+  
+  // Copy AndroidManifest.xml if exists
+  const manifestSource = path.join(assetsAndroidPath, 'AndroidManifest.xml');
+  if (fs.existsSync(manifestSource)) {
+    console.log('Copying AndroidManifest.xml...');
+    spawnSync('cp', [manifestSource, androidManifestPath], { stdio: 'inherit' });
+  }
+  
+  console.log('✅ Android assets copied successfully');
+} else {
+  console.log('⚠️ Android assets folder not found, skipping copy');
+}
+
 
 // Build web app
 console.log('Building web app...');
