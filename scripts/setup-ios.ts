@@ -144,14 +144,13 @@ async function main() {
   
   // Copy iOS assets
   log('\n📦 Copying iOS assets...', colors.bright);
-  const assetsSourcePath = path.join(process.cwd(), 'assets', 'ios', 'AppIcon.appiconset');
-  const assetsDestPath = path.join(process.cwd(), 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset');
-  
-  if (directoryExists(assetsSourcePath) && directoryExists(path.join(process.cwd(), 'ios'))) {
-    log('Copying iOS icons from assets/ios...', colors.yellow);
-    runCommand(`cp -R ${assetsSourcePath} ${path.dirname(assetsDestPath)}/`);
+  const xcassetsSource = path.join(process.cwd(), 'assets', 'ios', 'Assets.xcassets', 'AppIcon.appiconset');
+  const xcassetsDest = path.join(process.cwd(), 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset');
+  if (directoryExists(xcassetsSource) && directoryExists(path.join(process.cwd(), 'ios', 'App', 'App', 'Assets.xcassets'))) {
+    log('Copying AppIcon.appiconset from assets/ios/Assets.xcassets/...', colors.yellow);
+    runCommand(`cp -R ${xcassetsSource} ${path.join(process.cwd(), 'ios', 'App', 'App', 'Assets.xcassets')}/`);
   } else {
-    log('⚠️ iOS assets not found in assets/ios or iOS platform not available', colors.yellow);
+    log('⚠️ AppIcon.appiconset not found in assets/ios/Assets.xcassets or destination missing', colors.yellow);
   }
   
   // Install pods
