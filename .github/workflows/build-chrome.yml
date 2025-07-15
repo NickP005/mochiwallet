@@ -4,35 +4,31 @@ on:
   push:
     tags:
       - 'v*'
+  # Solo quando pushato tag v* (non per commit normali)
 
 jobs:
   build-chrome:
-    # runs-on: self-hosted
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout main branch code
+      - name: Checkout code
         uses: actions/checkout@v4
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          ref: main
-          fetch-depth: 0
+          node-version: '18'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 8
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install
 
       - name: Build extension
-        run: pnpm run build
+        run: pnpm build
 
       - name: Get tag name
         id: tag
@@ -49,4 +45,4 @@ jobs:
         with:
           name: chrome-extension-${{ env.TAG_NAME }}
           path: mochimo-chromium-${{ env.TAG_NAME }}.zip
-          retention-days: 30
+          retention-days: 30  # Mantieni per 30 giorni per permettere la release unificata

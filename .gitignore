@@ -56,3 +56,6 @@ android/**
 .env*.local
 .env.production
 package-lock.json
+
+ios/**
+android/**

@@ -11,9 +11,10 @@ jobs:
     name: Build Android APKs and App Bundle
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout android branch code
+        uses: actions/checkout@v4
         with:
+          ref: android
           fetch-depth: 0  # include tags
 
       - name: Set up JDK

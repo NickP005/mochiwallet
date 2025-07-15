@@ -172,6 +172,17 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ env.ANDROID_RUN_ID }}
 
+      - name: Download Android Release AAB artifacts
+        continue-on-error: true
+        if: env.ANDROID_RUN_ID != 'null' && env.ANDROID_RUN_ID != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-aab-${{ env.TAG_NAME }}
+          path: ./android-release-aab-artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.ANDROID_RUN_ID }}
+
       - name: Prepare release files
         run: |
           mkdir -p release-files
@@ -249,64 +260,92 @@ jobs:
             echo "❌ Android Release APK not found"
           fi
 
+          # Android Release AAB
+          if [ -d "./android-release-aab-artifacts" ] && [ "$(ls -A ./android-release-aab-artifacts)" ]; then
+            FOUND_AAB_RELEASE=$(find ./android-release-aab-artifacts -type f -name "*.aab" | head -1)
+            if [ -n "$FOUND_AAB_RELEASE" ]; then
+              cp "$FOUND_AAB_RELEASE" ./release-files/mochimo-android-release-${{ env.TAG_NAME }}.aab
+              echo "✅ Android Release AAB added: $FOUND_AAB_RELEASE"
+            else
+              echo "❌ No Android Release AAB file found in android-release-aab-artifacts"
+            fi
+          else
+            echo "❌ Android Release AAB not found"
+          fi
+
           echo "Files in release:"
           ls -la ./release-files/
 
+      - name: Generate dynamic release notes
+        id: relnotes
+        run: |
+          TAG=${{ env.TAG_NAME }}
+          BODY="## Mochimo Wallet Release $TAG\n\n### Files included:\n"
+          # Chrome
+          if [ -f "./release-files/mochimo-chromium-$TAG.zip" ]; then
+            BODY+=$'\n#### Chrome Extension\n- **mochimo-chromium-'$TAG'.zip**: Ready-to-install Chrome extension'
+          fi
+          # iOS
+          if [ -f "./release-files/mochimo-ios-source-$TAG.zip" ]; then
+            BODY+=$'\n#### iOS App\n- **mochimo-ios-source-'$TAG'.zip**: iOS project files for Xcode'
+          fi
+          if [ -f "./release-files/mochimo-ios-$TAG.ipa" ]; then
+            BODY+=$'\n- **mochimo-ios-'$TAG'.ipa**: Compiled iOS app for App Store'
+          fi
+          # Android
+          if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ]; then
+            BODY+=$'\n#### Android App'
+            BODY+=$'\n- **mochimo-android-debug-'$TAG'.apk**: Debug APK for testing'
+          fi
+          if [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
+            BODY+=$'\n- **mochimo-android-release-'$TAG'.apk**: Release APK for installation'
+          fi
+          if [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
+            BODY+=$'\n- **mochimo-android-release-'$TAG'.aab**: Android App Bundle for Play Store'
+          fi
+
+          BODY+=$'\n\n---\n\n### Installation Instructions\n'
+          # Chrome instructions
+          if [ -f "./release-files/mochimo-chromium-$TAG.zip" ]; then
+            BODY+=$'\n**Chrome Extension:**\n'
+            BODY+=$'1. Scarica **mochimo-chromium-'$TAG'.zip**\n2. Estrai il contenuto in una cartella\n3. Apri Chrome e vai su `chrome://extensions`\n4. Abilita la modalità sviluppatore\n5. Clicca su "Carica estensione non pacchettizzata" e seleziona la cartella estratta\n'
+          fi
+          # iOS instructions
+          if [ -f "./release-files/mochimo-ios-source-$TAG.zip" ]; then
+            BODY+=$'\n**iOS App (Xcode):**\n'
+            BODY+=$'1. Scarica **mochimo-ios-source-'$TAG'.zip**\n2. Estrai e apri `App.xcworkspace` in Xcode\n3. Compila ed esegui su simulatore o dispositivo\n'
+          fi
+          if [ -f "./release-files/mochimo-ios-$TAG.ipa" ]; then
+            BODY+=$'\n**iOS App Store:**\n- Usa il file `.ipa` con Xcode o Transporter per la pubblicazione su App Store\n'
+          fi
+          # Android instructions
+          if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
+            BODY+=$'\n**Android App:**\n'
+            if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ]; then
+              BODY+=$'- Scarica **mochimo-android-debug-'$TAG'.apk** per installazione diretta su dispositivo\n'
+            fi
+            if [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
+              BODY+=$'- Scarica **mochimo-android-release-'$TAG'.apk** per installazione diretta su dispositivo\n'
+            fi
+            if [ -f "./release-files/mochimo-android-release-$TAG.aab" ]; then
+              BODY+=$'- Scarica **mochimo-android-release-'$TAG'.aab** per pubblicazione su Play Store (Google Play Console)\n'
+            fi
+            if [ -f "./release-files/mochimo-android-debug-$TAG.apk" ] || [ -f "./release-files/mochimo-android-release-$TAG.apk" ]; then
+              BODY+=$'- Trasferisci l’APK sul dispositivo, abilita l’installazione da sorgenti sconosciute e apri il file per installare\n'
+            fi
+          fi
+
+          BODY+=$'\n---\n\nRelease generata automaticamente da GitHub Actions.\n\n- Chrome build da: `main`\n- iOS build da: `ios`\n- Android build da: `android`\n\nUltimo aggiornamento: '$(date -u)'\n'
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Create or Update GitHub Release
         if: env.CHROME_RUN_ID != '' || env.IOS_RUN_ID != '' || env.ANDROID_RUN_ID != ''
-        # Only create/update release when at least one build has run for this tag
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
           files: ./release-files/*
-          body: |
-            ## Mochimo Wallet Release ${{ env.TAG_NAME }}
-            
-            ### Files included:
-            
-            **Chrome Extension**:
-            - `mochimo-chromium-${{ env.TAG_NAME }}.zip`: Ready-to-install Chrome extension
-            
-            **iOS App**:
-            - `mochimo-ios-source-${{ env.TAG_NAME }}.zip`: iOS project files for Xcode
-            - `mochimo-ios-${{ env.TAG_NAME }}.ipa`: Compiled iOS app for App Store (if available)
-            
-            **Android App**:
-            - `mochimo-android-debug-${{ env.TAG_NAME }}.apk`: Debug APK for testing
-            - `mochimo-android-release-${{ env.TAG_NAME }}.apk`: Release APK for installation
-            
-            ### Installation Instructions:
-            
-            #### Chrome Extension:
-            1. Download the `mochimo-chromium-${{ env.TAG_NAME }}.zip` file
-            2. Extract the contents to a folder
-            3. Open Chrome and go to `chrome://extensions`
-            4. Enable Developer mode
-            5. Click "Load unpacked" and select the extracted folder
-            
-            #### iOS App:
-            **For Development (using Xcode):**
-            1. Download `mochimo-ios-source-${{ env.TAG_NAME }}.zip`
-            2. Extract and open `App.xcworkspace` in Xcode
-            3. Build and run on simulator or device
-            
-            **For App Store (if IPA is available):**
-            - Use the `.ipa` file with Xcode or Transporter for App Store submission
-            
-            #### Android App:
-            1. Download the `mochimo-android-debug-${{ env.TAG_NAME }}.apk` or `mochimo-android-release-${{ env.TAG_NAME }}.apk`
-            2. Transfer to your Android device
-            3. Enable installation from unknown sources in your device settings
-            4. Open the APK file on your device to install
-            
-            ---
-            
-            This release was automatically generated by GitHub Actions.
-            
-            - Chrome build from: `main` branch
-            - iOS build from: `ios` branch
-            - Android build from: `android` branch
-            
-            Last updated: $(date -u)
+          body: ${{ env.RELEASE_BODY }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
