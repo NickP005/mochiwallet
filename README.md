@@ -72,6 +72,7 @@ npm install
 | `npm run preview`     | Serve the real web build from `dist/web`                                |
 | `npm run setup:android` | Complete Android environment setup (run once)                         |
 | `npm run build:android` | Build webapp, sync Capacitor, and create Android APK                   |
+| `npm run run:android`   | Launch emulator, build & install the app on selected AVD                     |
 | `npm run dist:android` | Create optimized build for Google Play Store                           |
 
 ## Android Build (Capacitor)
