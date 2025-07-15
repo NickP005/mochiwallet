@@ -53,10 +53,23 @@ jobs:
             const versionName = pkg.version;
             const parts = versionName.split('.').map(n => parseInt(n, 10) || 0);
             const versionCode = parts[0] * 10000 + (parts[1] || 0) * 100 + (parts[2] || 0);
+            if (!versionName || isNaN(versionCode)) {
+              throw new Error('Invalid versionName or versionCode from package.json');
+            }
             const gradlePath = path.resolve('android/app/build.gradle');
             let content = fs.readFileSync(gradlePath, 'utf8');
-            content = content.replace(/versionCode\\s+\\d+/, `versionCode ${versionCode}`);
-            content = content.replace(/versionName\\s+\"[^\"]+\"/, `versionName \"${versionName}\"`);
+            let foundCode = false, foundName = false;
+            content = content.replace(/versionCode\s+\d+/, (m) => { foundCode = true; return `versionCode ${versionCode}`; });
+            content = content.replace(/versionName\s+\"[^\"]+\"/, (m) => { foundName = true; return `versionName \"${versionName}\"`; });
+            if (!foundCode || !foundName) {
+              // Insert into defaultConfig block
+              content = content.replace(/defaultConfig\s*{/, (m) => {
+                let insert = '';
+                if (!foundCode) insert += `\n        versionCode ${versionCode}`;
+                if (!foundName) insert += `\n        versionName \"${versionName}\"`;
+                return m + insert;
+              });
+            }
             fs.writeFileSync(gradlePath, content, 'utf8');
             console.log(`Set Android versionCode ${versionCode}, versionName ${versionName}`);
           "
