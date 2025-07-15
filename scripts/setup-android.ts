@@ -31,19 +31,44 @@ if (fs.existsSync(buildGradlePath)) {
   const marker = '// Configure Java 17 compilation';
   if (!gradleContent.includes(marker)) {
     const block = `\n// Configure Java 17 compilation and remove unsupported --release flag for all Android modules
-subprojects {
-  afterEvaluate { project ->
-    if (project.hasProperty('android')) {
-      project.android.compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-      }
-      project.tasks.withType(JavaCompile).configureEach {
+allprojects {
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         options.release = null
         options.compilerArgs.removeAll { arg -> arg.startsWith("--release") }
-      }
     }
-  }
+}
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+            project.tasks.withType(JavaCompile).configureEach {
+                options.release = null
+                options.compilerArgs.removeAll { arg -> arg.startsWith("--release") }
+            }
+        }
+    }
+}
+
+// Force Java 17 for all Android plugins (application and library) - overrides capacitor-android defaults
+subprojects { project ->
+    project.plugins.withId('com.android.library') {
+        project.android.compileOptions {
+            sourceCompatibility JavaVersion.VERSION_17
+            targetCompatibility JavaVersion.VERSION_17
+        }
+    }
+    project.plugins.withId('com.android.application') {
+        project.android.compileOptions {
+            sourceCompatibility JavaVersion.VERSION_17
+            targetCompatibility JavaVersion.VERSION_17
+        }
+    }
 }\n`;
     fs.writeFileSync(buildGradlePath, gradleContent + block, 'utf8');
     console.log('🤖 Patched android/build.gradle for Java 17 configuration');

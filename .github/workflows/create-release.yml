@@ -2,7 +2,7 @@ name: Create Unified Release
 
 on:
   workflow_run:
-    workflows: ["Build iOS App", "Build Android App"]
+    workflows: ["Build Android App"]
     types:
       - completed
 
