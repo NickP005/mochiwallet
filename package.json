@@ -14,7 +14,7 @@
     "build:mobile": "npm run build:web && npx cap sync",
     "build:android": "npm run build:web && npx cap sync android && cd android && cross-env-shell \"if [ -f gradlew ]; then ./gradlew assembleDebug; else gradlew.bat assembleDebug; fi\"",
     "setup:ios": "tsx scripts/setup-ios.ts",
-    "build:ios": "npm run build:web && npx cap sync ios && npx cap open ios",
+    "build:ios": "npm run build:web && cross-env-shell \"npx cap add ios 2>/dev/null || true && npx cap sync ios && npx cap open ios\"",
     "dist:ios": "tsx scripts/ios-dist.ts",
     "build:all": "npm run build:extension && npm run build:mobile && npm run build:android && npm run build:ios",
     "lint": "eslint .",
