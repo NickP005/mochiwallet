@@ -18,10 +18,10 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
-import { StorageProvider, useWallet } from 'mochimo-wallet'
+import { StorageProvider, useWallet, useApiEndpoint, getApiEndpoints } from 'mochimo-wallet'
 import { motion } from 'framer-motion'
 import {
-  AlertDialog,
+  AlertDialog, 
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -42,7 +42,6 @@ import { sessionManager } from '@/lib/services/SessionManager'
 import { log } from "@/lib/utils/logging"
 import { Input } from '@/components/ui/input'
 import { env } from '@/config/env'
-import { useApiEndpoint } from '@/lib/contexts/ApiEndpointContext'
 
 const logger = log.getLogger("wallet-settings");
 
@@ -53,17 +52,8 @@ interface SettingsDialogProps {
   onClose: () => void
 }
 
-const ENDPOINTS = [
-  { label: 'api.mochimo.org', url: 'https://api.mochimo.org' },
-  { label: 'Nick\'s Dev API', url: 'https://dev-api.mochiscan.org:8443' },
-  { label: 'backup - US Central', url: 'https://api-usc.mochimo.org' },
-  { label: 'backup - Singapore', url: 'https://api-sgp.mochimo.org' },
-  { label: 'backup - Germany', url: 'https://api-deu.mochimo.org' },
-  { label: 'backup - Australia', url: 'http://api-aus.mochimo.org:8080' },
-  { label: 'Custom API', url: 'custom' },
-];
-
 const FEATURE_FLAG_RECOVERY_PHRASE = false
+
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showExportConfirm, setShowExportConfirm] = useState(false)
@@ -79,27 +69,36 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [recoveryError, setRecoveryError] = useState<string | null>(null)
   const [showRecoveryPhrase, setShowRecoveryPhrase] = useState(false)
   const [recoveryPhrase, setRecoveryPhrase] = useState('')
-  const [selectedEndpoint, setSelectedEndpoint] = useState('')
   const [customEndpoint, setCustomEndpoint] = useState('')
   const [endpointError, setEndpointError] = useState<string | null>(null)
   
-  // Use the API endpoint context
-  const { currentEndpoint, setApiEndpoint } = useApiEndpoint()
+  // Use the API endpoint hook from mochimo-wallet library
+  const [currentEndpoint, setApiEndpoint, endpointLoading, endpointError2] = useApiEndpoint()
+  
+  // Get available endpoints from the library
+  const availableEndpoints = getApiEndpoints()
+  
+  // State for UI display
+  const [selectedEndpoint, setSelectedEndpoint] = useState('')
 
-  // Load saved endpoint on component mount
+  // Load current endpoint and set display state
   useEffect(() => {
     if (currentEndpoint) {
-      if (ENDPOINTS.some(e => e.url === currentEndpoint)) {
+      // Check if current endpoint matches any predefined endpoint
+      const predefinedEndpoint = availableEndpoints.find(e => e.url === currentEndpoint)
+      if (predefinedEndpoint) {
         setSelectedEndpoint(currentEndpoint)
+        setCustomEndpoint('')
       } else {
+        // It's a custom endpoint
         setSelectedEndpoint('custom')
         setCustomEndpoint(currentEndpoint)
       }
-    } else {
+    } else if (availableEndpoints.length > 0) {
       // Default to the first endpoint if none is set
-      setSelectedEndpoint(ENDPOINTS[0].url)
+      setSelectedEndpoint(availableEndpoints[0].url)
     }
-  }, [currentEndpoint])
+  }, [currentEndpoint, availableEndpoints])
 
   const handleLogout = async () => {
     try {
@@ -166,31 +165,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     }
   }
 
-  const handleApiChange = (url: string) => {
-    setCustomEndpoint(url)
-    setSelectedEndpoint(ENDPOINTS.find(ep => ep.url === url)?.url ?? '')
-  }
-
-  const handleSaveEndpoint = () => {
-    if (selectedEndpoint === 'custom' && customEndpoint) {
-      // Validate custom endpoint URL
-      try {
-        new URL(customEndpoint)
-        setEndpointError(null)
-      } catch {
-        setEndpointError('Invalid URL')
-        return
-      }
-    } else {
-      setCustomEndpoint('')
-    }
-
-    // Save to local storage
-    localStorage.setItem('api-endpoint', selectedEndpoint === 'custom' ? customEndpoint : selectedEndpoint)
-    setShowExportConfirm(false)
-  }
-
-  const handleEndpointChange = (endpoint: string) => {
+  const handleEndpointChange = async (endpoint: string) => {
     setSelectedEndpoint(endpoint)
     setEndpointError(null)
     
@@ -199,18 +174,24 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       return
     }
     
-    // Update the endpoint using context
-    const success = setApiEndpoint(endpoint);
-    
-    if (success) {
-      // Notify the user
-      // alert('API endpoint changed successfully. The app will now use the new endpoint.')
-    } else {
-      alert('Failed to update API endpoint. Please try again.')
+    // Update the endpoint using the library hook
+    try {
+      const success = await setApiEndpoint(endpoint)
+      
+      if (success) {
+        logger.info('API endpoint changed successfully to:', endpoint)
+        // You can add a toast notification here if you have one
+      } else {
+        setEndpointError('Failed to update API endpoint. Please try again.')
+        logger.error('Failed to update API endpoint')
+      }
+    } catch (error) {
+      setEndpointError('Error updating API endpoint')
+      logger.error('Error updating API endpoint:', error)
     }
   }
   
-  const handleCustomEndpointSave = () => {
+  const handleCustomEndpointSave = async () => {
     if (!customEndpoint.trim()) {
       setEndpointError('Please enter an API endpoint URL')
       return
@@ -221,14 +202,21 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       return
     }
     
-    // Update the endpoint using context
-    const success = setApiEndpoint(customEndpoint);
-    
-    if (success) {
-      // Notify the user
-      alert('Custom API endpoint changed successfully. The app will now use the new endpoint.')
-    } else {
-      setEndpointError('Failed to update API endpoint. Please check the URL and try again.')
+    // Update the endpoint using the library hook
+    try {
+      const success = await setApiEndpoint(customEndpoint)
+      
+      if (success) {
+        setEndpointError(null)
+        logger.info('Custom API endpoint changed successfully to:', customEndpoint)
+        // You can add a toast notification here if you have one
+      } else {
+        setEndpointError('Failed to update API endpoint. Please check the URL and try again.')
+        logger.error('Failed to update custom API endpoint')
+      }
+    } catch (error) {
+      setEndpointError('Error updating custom API endpoint')
+      logger.error('Error updating custom API endpoint:', error)
     }
   }
 
@@ -320,57 +308,70 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               Select which Mochimo API server to connect to
             </p>
             <div className="space-y-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between">
-                    <div className="flex items-center">
-                      <Globe className="h-4 w-4 mr-2" />
-                      {selectedEndpoint === 'custom' 
-                        ? 'Custom API' 
-                        : ENDPOINTS.find(ep => ep.url === selectedEndpoint)?.label || 'Select Endpoint'}
-                    </div>
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full" align="start">
-                  {ENDPOINTS.map(endpoint => (
-                    <DropdownMenuItem 
-                      key={endpoint.url}
-                      className="flex items-center justify-between"
-                      onClick={() => handleEndpointChange(endpoint.url)}
-                    >
-                      <span className="flex items-center">
-                        <Globe className="h-4 w-4 mr-2" />
-                        {endpoint.label}
-                      </span>
-                      {selectedEndpoint === endpoint.url && <Check className="h-4 w-4" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {selectedEndpoint === 'custom' && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="https://your-api-endpoint.com"
-                      value={customEndpoint}
-                      onChange={(e) => {
-                        setCustomEndpoint(e.target.value)
-                        setEndpointError(null)
-                      }}
-                      className={endpointError ? "border-destructive" : ""}
-                    />
-                    <Button onClick={handleCustomEndpointSave}>Save</Button>
-                  </div>
+              {endpointLoading ? (
+                <div className="text-sm text-muted-foreground">Loading endpoint settings...</div>
+              ) : (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        <div className="flex items-center">
+                          <Globe className="h-4 w-4 mr-2" />
+                          {selectedEndpoint === 'custom' 
+                            ? 'Custom API' 
+                            : availableEndpoints.find(ep => ep.url === selectedEndpoint)?.label || 'Select Endpoint'}
+                        </div>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full" align="start">
+                      {availableEndpoints.map(endpoint => (
+                        <DropdownMenuItem 
+                          key={endpoint.url}
+                          className="flex items-center justify-between"
+                          onClick={() => handleEndpointChange(endpoint.url)}
+                        >
+                          <span className="flex items-center">
+                            <Globe className="h-4 w-4 mr-2" />
+                            {endpoint.label}
+                          </span>
+                          {selectedEndpoint === endpoint.url && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   
-                  {endpointError && (
-                    <div className="flex items-center text-destructive text-sm">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {endpointError}
+                  {selectedEndpoint === 'custom' && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="https://your-api-endpoint.com"
+                          value={customEndpoint}
+                          onChange={(e) => {
+                            setCustomEndpoint(e.target.value)
+                            setEndpointError(null)
+                          }}
+                          className={endpointError ? "border-destructive" : ""}
+                        />
+                        <Button onClick={handleCustomEndpointSave}>Save</Button>
+                      </div>
+                      
+                      {endpointError && (
+                        <div className="flex items-center text-destructive text-sm">
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          {endpointError}
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
+                  
+                  {endpointError2 && (
+                    <div className="flex items-center text-destructive text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {endpointError2}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
