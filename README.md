@@ -50,6 +50,7 @@ Make sure your development environment meets these requirements:
    export PATH=$PATH:$ANDROID_HOME/tools
    export PATH=$PATH:$ANDROID_HOME/tools/bin
    export PATH=$PATH:$ANDROID_HOME/platform-tools
+   export PATH=$PATH:$ANDROID_HOME/emulator
    ```
    
 4. Make sure you have JDK installed:
