@@ -99,10 +99,7 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
   }
 
   return (
-    <div 
-      className="flex flex-col items-center justify-center min-h-full p-8"
-      style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}
-    >
+    <div className="flex flex-col items-center justify-center min-h-full p-8">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="flex flex-col items-center space-y-4">

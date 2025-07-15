@@ -50,7 +50,6 @@ export function UnlockWallet({ onUnlock }: UnlockWalletProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center min-h-[400px] p-6"
-      style={{ paddingTop: 'max(env(safe-area-inset-top), 24px)' }}
     >
       <motion.div
         initial={{ scale: 0.5 }}

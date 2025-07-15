@@ -23,20 +23,20 @@ export function WalletLayout({
   const { viewMode, toggleViewMode, isExtension } = useViewMode()
   
   return (
-    <div className={cn(
+    <div
+      className={cn(
       "flex flex-col bg-background",
       // Responsive layout: usa dimensioni fisse solo in modalità popup per estensione
       viewMode === 'popup' && isExtension ? 'w-[360px] h-[600px]' : 'w-full h-full min-h-screen',
       // Quando è in modalità web o panel, centra il contenuto su schermi larghi
       viewMode !== 'popup' && 'sm:px-4 md:px-6 lg:px-0'
-    )}>
+    )}
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       {/* Fixed Header with Safe Area for iOS */}
-      <div 
+      <div
         className="flex items-center justify-between px-4 border-b border-border/50 shrink-0 bg-card/50"
-        style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          minHeight: '56px'
-        }}
+        style={{ minHeight: '56px' }}
       >
         <div className="flex items-center gap-3">
           {showMenu ? (

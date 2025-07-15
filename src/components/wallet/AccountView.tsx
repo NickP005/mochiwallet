@@ -162,7 +162,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-10  border-b border-border/50"
+        className="sticky top-0 z-10 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
       >
         <div className="max-w-full mx-auto px-6 py-4">
           {/* Main header content */}
