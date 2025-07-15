@@ -30,8 +30,14 @@ export function WalletLayout({
       // Quando è in modalità web o panel, centra il contenuto su schermi larghi
       viewMode !== 'popup' && 'sm:px-4 md:px-6 lg:px-0'
     )}>
-      {/* Fixed Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-card/50">
+      {/* Fixed Header with Safe Area for iOS */}
+      <div 
+        className="flex items-center justify-between px-4 border-b border-border/50 shrink-0 bg-card/50"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          minHeight: '56px'
+        }}
+      >
         <div className="flex items-center gap-3">
           {showMenu ? (
             <Button
