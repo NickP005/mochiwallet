@@ -1,4 +1,5 @@
 # Mochimo Wallet
+**Pre-built iOS releases are available on [GitHub Releases](https://github.com/NickP005/mochiwallet/releases).**
 
 A browser extension wallet and mobile app for the Mochimo cryptocurrency.
 
@@ -195,4 +196,4 @@ mochiwallet/
 
 ## License
 
-MIT
+See [LICENSE](LICENSE.md) for details.
