@@ -12,9 +12,6 @@ if (!fs.existsSync(path.resolve('./android'))) {
   console.log('Android platform already exists');
 }
 
-// Make sure dependencies are installed
-console.log('Installing dependencies...');
-spawnSync('npm', ['install'], { stdio: 'inherit' });
 
 // Build web app
 console.log('Building web app...');
