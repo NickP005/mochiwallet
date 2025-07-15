@@ -41,10 +41,11 @@ ios/
 # Track iOS assets in separate folder
 !assets/ios/
 
-# Android  
-android/**
-!android/app/src/main/res/mipmap-*/
-!android/app/src/main/AndroidManifest.xml
+# Android - ignore entire platform folder
+android/
+
+# Track Android assets in separate folder
+!assets/android/
 
 # Environment
 .env
