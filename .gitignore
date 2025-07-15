@@ -35,16 +35,11 @@ yarn-error.log*
 *.pem
 ui_screenshots
 
-# iOS - Track only essential files for the project
-/ios/**
+# iOS - ignore entire platform folder
+ios/
 
-# Allow necessary iOS app files:
-!/ios/App/
-!/ios/App/App/
-!/ios/App/App/Assets.xcassets/
-!/ios/App/App/Assets.xcassets/**
-!/ios/App/App/Info.plist
-!/ios/App/App/config.xml
+# Track iOS assets in separate folder
+!assets/ios/
 
 # Android  
 android/**

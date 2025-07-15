@@ -42,7 +42,7 @@ jobs:
       
       - name: Setup Capacitor and iOS
         run: |
-          npx cap add ios
+          npx cap add ios || echo "iOS platform already exists"
           npx cap sync ios
 
       - name: Install iOS Dependencies

@@ -142,6 +142,18 @@ async function main() {
     log('✅ iOS platform already added', colors.green);
   }
   
+  // Copy iOS assets
+  log('\n📦 Copying iOS assets...', colors.bright);
+  const assetsSourcePath = path.join(process.cwd(), 'assets', 'ios', 'AppIcon.appiconset');
+  const assetsDestPath = path.join(process.cwd(), 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset');
+  
+  if (directoryExists(assetsSourcePath) && directoryExists(path.join(process.cwd(), 'ios'))) {
+    log('Copying iOS icons from assets/ios...', colors.yellow);
+    runCommand(`cp -R ${assetsSourcePath} ${path.dirname(assetsDestPath)}/`);
+  } else {
+    log('⚠️ iOS assets not found in assets/ios or iOS platform not available', colors.yellow);
+  }
+  
   // Install pods
   log('\n📦 Installing native dependencies (CocoaPods)...', colors.bright);
   const iosAppPath = path.join(process.cwd(), 'ios', 'App');
