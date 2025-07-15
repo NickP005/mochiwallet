@@ -36,11 +36,15 @@ yarn-error.log*
 ui_screenshots
 
 # iOS - Track only essential files for the project
-ios/**
-!ios/App/App/Assets.xcassets/
-!ios/App/App/Assets.xcassets/**
-!ios/App/App/Info.plist
-!ios/App/App/config.xml
+/ios/**
+
+# Allow necessary iOS app files:
+!/ios/App/
+!/ios/App/App/
+!/ios/App/App/Assets.xcassets/
+!/ios/App/App/Assets.xcassets/**
+!/ios/App/App/Info.plist
+!/ios/App/App/config.xml
 
 # Android  
 android/**
@@ -56,6 +60,4 @@ android/**
 .env*.local
 .env.production
 package-lock.json
-
-ios/**
-android/**
+src/assets/
