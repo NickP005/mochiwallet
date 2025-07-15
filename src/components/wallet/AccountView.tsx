@@ -36,12 +36,9 @@ interface AccountViewProps {
   onUpdate: (updated: Account) => void
 }
 
-// Utility function to normalize addresses for comparison
-const normalizeAddress = (addr: string): string => {
-  // Remove 0x prefix if present, take first 40 hex chars
-  const hex = addr.replace(/^0x/, '').slice(0, 40).toLowerCase()
-  return hex
-}
+// Interface for account props
+
+
 
 export function AccountView({ account, onUpdate }: AccountViewProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -59,9 +56,11 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const ac = useAccounts()
   const net = useNetwork()
 
+
   // Check activation status on mount and refresh
   useEffect(() => {
     checkActivation()
+    //check whether the current address matches with the wots index we are using
   }, [account.tag])
 
   // Format balance to MCM with 9 decimal places
@@ -79,55 +78,31 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
       logger.info('checking activation')
       setCheckingActivation(true)
       const response = await NetworkProvider.getNetwork().resolveTag(account.tag)
-      
       // Account is activated if addressConsensus is not empty
       const isActivated = Boolean(response.success &&
         response.addressConsensus &&
         response.addressConsensus.length > 0)
-      
-      if (response.addressConsensus) {
-        // Normalize the current network address (remove 0x prefix if present)
-        const currentAddress = normalizeAddress(response.addressConsensus)
-        
-        // Get current WOTS address being used
-        let t1 = performance.now()
-        const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.wotsWallet.getAddress()!
-        let t2 = performance.now()
-        logger.info('time taken to get wots address', t2 - t1)
-        
-        // Normalize the WOTS address for comparison
-        const wotsAddressHex = normalizeAddress(Buffer.from(currentWotsAddressBeingUsed).toString('hex'))
-        
-        logger.info('current wots address being used (normalized):', wotsAddressHex)
-        logger.info('current network address (normalized):', currentAddress)
+      const currentAddress = response.addressConsensus.slice(2);
+      //deduce current wotsindex from this
+      let t1 = performance.now()
+      const currentWotsAddressBeingUsed = ac.currentWOTSKeyPair?.wotsWallet.getAddress()!
+      let t2 = performance.now()
+      logger.info('time taken to get wots address', t2 - t1)
+      logger.info('current wots address being used', Buffer.from(currentWotsAddressBeingUsed).toString('hex'))
 
-        if (currentAddress && currentAddress !== wotsAddressHex) {
-          logger.error('current address does not match with the wots address being used')
-          logger.info('CURRENT NETWORK ADDRESS', currentAddress)
-          logger.info('CURRENTLY USED WOTS INDEX', account.wotsIndex)
-          
-          const t1 = performance.now()
-          // Use the last 20 bytes (40 hex chars) for the address hash
-          const addressHash = Buffer.from(currentAddress, 'hex').subarray(-20)
-          // Use the first address from faddress (remove 0x prefix, take first 40 chars)
-          const firstAddress = Buffer.from(normalizeAddress(account.faddress), 'hex')
-          
-          const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(
-            Buffer.from(account.seed, 'hex'), 
-            addressHash, 
-            firstAddress
-          )
-          const t2 = performance.now()
-          logger.info('current wots index', currentWotsIndex)
-          logger.info('time taken', t2 - t1)
-          
-          if (currentWotsIndex !== undefined && currentWotsIndex !== null) {
-            ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
-            logger.info('updated wots index', currentWotsIndex)
-          }
-        } else {
-          logger.info('current address matches with the wots address being used')
-        }
+      if (currentAddress && currentAddress !== Buffer.from(currentWotsAddressBeingUsed).toString('hex')) {
+        logger.error('current address does not match with the wots address being used')
+        logger.info('CURRENT NETWORK ADDRESS', currentAddress)
+        logger.info('CURRENTLY USED WOTS INDEX', account.wotsIndex)
+        const t1 = performance.now()
+        const currentWotsIndex = MasterSeed.deriveWotsIndexFromWotsAddrHash(Buffer.from(account.seed, 'hex'), Buffer.from(currentAddress, 'hex').subarray(20, 40), Buffer.from(account.faddress, 'hex'))
+        const t2 = performance.now()
+        logger.info('current wots index', currentWotsIndex)
+        logger.info('time taken', t2 - t1)
+        if (currentWotsIndex !== undefined && currentWotsIndex !== null) ac.updateAccount(account.tag, { wotsIndex: currentWotsIndex })
+        logger.info('updated wots index', currentWotsIndex)
+      } else {
+        logger.info('current address matches with the wots address being used')
       }
 
       if (isActivated) {
@@ -172,6 +147,7 @@ export function AccountView({ account, onUpdate }: AccountViewProps) {
   const tag = useMemo(() => {
     return TagUtils.addrTagToBase58(Buffer.from(account.tag, 'hex'))
   }, [account.tag])
+
 
   const handleCopy = async () => {
     if (!tag) return
