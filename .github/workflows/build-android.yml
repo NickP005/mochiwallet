@@ -46,33 +46,32 @@ jobs:
       # Set version info from package.json without building yet
       - name: Set Android version from package.json
         run: |
-          node -e "
-            const fs = require('fs');
-            const path = require('path');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
             const versionName = pkg.version;
-            const parts = versionName.split('.').map(n => parseInt(n, 10) || 0);
+            const parts = versionName.split(".").map(n => parseInt(n, 10) || 0);
             const versionCode = parts[0] * 10000 + (parts[1] || 0) * 100 + (parts[2] || 0);
             if (!versionName || isNaN(versionCode)) {
-              throw new Error('Invalid versionName or versionCode from package.json');
+              throw new Error("Invalid versionName or versionCode from package.json");
             }
-            const gradlePath = path.resolve('android/app/build.gradle');
-            let content = fs.readFileSync(gradlePath, 'utf8');
+            const gradlePath = path.resolve("android/app/build.gradle");
+            let content = fs.readFileSync(gradlePath, "utf8");
             let foundCode = false, foundName = false;
-            content = content.replace(/versionCode\s+\d+/, (m) => { foundCode = true; return `versionCode ${versionCode}`; });
-            content = content.replace(/versionName\s+\"[^\"]+\"/, (m) => { foundName = true; return `versionName \"${versionName}\"`; });
+            content = content.replace(/versionCode\s+\d+/, m => { foundCode = true; return `versionCode ${versionCode}`; });
+            content = content.replace(/versionName\s+"[^"]+"/, m => { foundName = true; return `versionName \"${versionName}\"`; });
             if (!foundCode || !foundName) {
-              // Insert into defaultConfig block
-              content = content.replace(/defaultConfig\s*{/, (m) => {
-                let insert = '';
+              content = content.replace(/defaultConfig\s*{/, m => {
+                let insert = "";
                 if (!foundCode) insert += `\n        versionCode ${versionCode}`;
                 if (!foundName) insert += `\n        versionName \"${versionName}\"`;
                 return m + insert;
               });
             }
-            fs.writeFileSync(gradlePath, content, 'utf8');
+            fs.writeFileSync(gradlePath, content, "utf8");
             console.log(`Set Android versionCode ${versionCode}, versionName ${versionName}`);
-          "
+          '
 
       - name: Build debug APK
         run: |
