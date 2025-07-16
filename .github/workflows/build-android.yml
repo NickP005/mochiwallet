@@ -10,6 +10,11 @@ jobs:
   build:
     name: Build Android APKs and App Bundle
     runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_PATH: android/app/upload-keystore.jks
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - name: Checkout android branch code
         uses: actions/checkout@v4
@@ -42,6 +47,14 @@ jobs:
 
       - name: Setup Android before build
         run: npm run setup:android
+      
+      - name: Setup signing keystore
+        # Decode and write the Android signing keystore
+        run: |
+          mkdir -p android/app
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         
       # Set version info from package.json without building yet
       - name: Set Android version from package.json
