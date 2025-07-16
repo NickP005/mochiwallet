@@ -48,6 +48,21 @@ jobs:
       - name: Setup Android before build
         run: npm run setup:android
       
+      - name: Fix Android icon formats
+        # Convert JPEG files with .png extensions to actual PNG format
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          for dir in android/app/src/main/res/mipmap-*; do
+            if [ -d "$dir" ]; then
+              for icon in "$dir"/*.png; do
+                if [ -f "$icon" ]; then
+                  echo "Converting $icon to PNG format"
+                  convert "$icon" "$icon.tmp" && mv "$icon.tmp" "$icon"
+                fi
+              done
+            fi
+          done
+      
       - name: Setup signing keystore
         # Decode and write the Android signing keystore
         run: |
