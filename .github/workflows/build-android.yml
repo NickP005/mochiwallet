@@ -48,20 +48,34 @@ jobs:
       - name: Setup Android before build
         run: npm run setup:android
       
-      - name: Fix Android icon formats
-        # Convert JPEG files with .png extensions to actual PNG format
+      - name: Fix Mochimo Android icons
+        # Convert the existing Mochimo JPEG icons to proper PNG format
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
+          
+          # Convert all Mochimo icons from JPEG to PNG format
           for dir in android/app/src/main/res/mipmap-*; do
             if [ -d "$dir" ]; then
+              echo "Processing directory: $dir"
               for icon in "$dir"/*.png; do
                 if [ -f "$icon" ]; then
-                  echo "Converting $icon to PNG format"
-                  convert "$icon" "$icon.tmp" && mv "$icon.tmp" "$icon"
+                  echo "Converting Mochimo icon: $icon"
+                  # Check if it's actually a JPEG file with .png extension
+                  if file "$icon" | grep -q "JPEG"; then
+                    echo "  -> Converting JPEG to PNG: $icon"
+                    convert "$icon" -background transparent "$icon.tmp.png"
+                    mv "$icon.tmp.png" "$icon"
+                  else
+                    echo "  -> Already PNG format: $icon"
+                  fi
                 fi
               done
             fi
           done
+          
+          # Verify the conversion worked
+          echo "Verifying converted icons:"
+          find android/app/src/main/res -name "ic_launcher*.png" -exec file {} \;
       
       - name: Setup signing keystore
         # Decode and write the Android signing keystore
